@@ -14,11 +14,13 @@ const costumIcon = L.icon({
     popupAnchor: [0, -32],
 });
 
-function MapClickHandler({ isDrawing, addPoint }) {
+function MapClickHandler({ isDrawing, addPoint, isReverseGeocoding, handleReverseGeocode }) {
     useMapEvents({
         click(e) {
             if (isDrawing) {
                 addPoint(e.latlng);
+            } else if (isReverseGeocoding) {
+                handleReverseGeocode(e.latlng.lat, e.latlng.lng);
             }
         }
     })
@@ -54,6 +56,7 @@ export default function addEvent() {
     const [selectedLocation, setSelectedLocation] = useState(null)
     const [polygon, setPolygon] = useState([])
     const [isDrawing, setIsDrawing] = useState(false)
+    const [isReverseGeocoding, setIsReverseGeocoding] = useState(false)
     const mapRef = useRef(null)
     useEffect(() => {
         const map = mapRef.current
@@ -93,12 +96,44 @@ export default function addEvent() {
         }
     }
 
+    const handleReverseGeocode = async (lat, lon) => {
+        try {
+            const response = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+                params: {
+                    lat,
+                    lon,
+                    format: 'json'
+                }
+            });
+            if (response.data && response.data.address) {
+                const namaJalan = response.data.address.road || response.data.address.pedestrian || response.data.address.path || response.data.display_name;
+                setSearchQuery(namaJalan);
+                setSelectedLocation({ lat, lng: lon });
+            } else {
+                setSearchQuery("Lokasi tidak ditemukan")
+            }
+            setSelectedLocation({ lat, lng });
+        } catch (error) {
+            console.log("TERJADI ERROR DALAM PENCARIAN REVERSE GEOCODING", error)
+        }
+    }
+
     const addPoint = (point) => {
-        setPolygon((prevPoints) => [...prevPoints, point])
+        setPolygon((prevPoints) => [...prevPoints, point]);
     }
 
     const handleClearPolygon = () => {
         setPolygon([])
+    }
+
+    const toggleDrawing = () => {
+        setIsReverseGeocoding(false)
+        setIsDrawing((prev) => !prev)
+    }
+
+    const toggleReverseGeocoding = () => {
+        setIsDrawing(false)
+        setIsReverseGeocoding((prev) => !prev)
     }
 
     return (
@@ -176,11 +211,14 @@ export default function addEvent() {
             </div>
 
             <div className='mb-4'>
-                <button type='button' onClick={() => setIsDrawing(!isDrawing)} className='bg-green-500 text-white px-3 py-2 rounded'>
+                <button type='button' onClick={toggleDrawing} className='bg-green-500 text-white px-3 py-2 rounded hover:bg-green-700'>
                     {isDrawing ? "Stop Menggambar Polygon" : "Gambar Polygon"}
                 </button>
                 <button type="button" onClick={handleClearPolygon} className='bg-red-500 text-white px-3 py-2 rounded ml-2 hover:bg-red-700'>
                     Hapus Polygon
+                </button>
+                <button type="button" onClick={toggleReverseGeocoding} className='bg-amber-500 text-white px-3 py-2 rounded ml-2 hover:bg-amber-700'>
+                    {isReverseGeocoding ? "Stop Reverse Geocoding" : "Aktifkan Reverse Geocoding"}
                 </button>
             </div>
 
@@ -191,7 +229,7 @@ export default function addEvent() {
             >
                 <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                 {selectedLocation && <Marker position={selectedLocation} icon={costumIcon} />}
-                <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} />
+                <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} isReverseGeocoding={isReverseGeocoding} handleReverseGeocode={handleReverseGeocode} />
                 {polygon.length > 0 && (
                     <Polygon positions={polygon} pathOptions={{ color: 'purple' }} />
                 )}
