@@ -2,18 +2,22 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 const cors = require("cors");
-const bodyParser = require("body-parser");
-const connect = require("./lib/connect");
+const whatsappRouter = require("./routes/whatsappRouter");
+const userRouter = require("./routes/userRouter");
+const jobdeskRouter = require("./routes/jobdeskRouter");
+const port = process.env.PORT
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+}));
 
-app.get('/', (req, res) => {
-    console.log("pembangunan sistem penjadwalan dan absensi");
-    connect();
-})
+app.use("/whatsapp", whatsappRouter);
+app.use("/user", userRouter);
+app.use("/jobdesk", jobdeskRouter);
 
-app.listen(process.env.PORT, () => {
-    console.log(`Server berjalan pada port http://localhost:${process.env.PORT}`);
-})
+app.listen(port, () => {
+    console.log(`Server berjalan pada port http://localhost:${port}`);
+});

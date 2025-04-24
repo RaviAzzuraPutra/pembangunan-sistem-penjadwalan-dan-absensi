@@ -27,37 +27,53 @@ function MapClickHandler({ isDrawing, addPoint, isReverseGeocoding, handleRevers
     return null;
 }
 
-// Simulasi data karyawan
 const karyawanData = [
-    { nama: "Butler Winter", role: "Karyawan", jobdesk: "Kramik", status: "Aktif" },
-    { nama: "Leeta Le Torneau", role: "Karyawan", jobdesk: "Supir", status: "Aktif" },
-    { nama: "Lore Woods", role: "Karyawan", jobdesk: "Jaga Stan", status: "Aktif" },
-    { nama: "Virion Christanti", role: "Karyawan", jobdesk: "Jaga Stan", status: "Aktif" },
-    { nama: "Lillith Graeme", role: "Karyawan", jobdesk: "Listrik", status: "Aktif" },
-    { nama: "Chadli Lobo", role: "Karyawan", jobdesk: "Listrik", status: "Aktif" },
-    { nama: "Norrix Delacroix", role: "Karyawan", jobdesk: "Supir", status: "Aktif" },
+    { nama: "Butler Winter", role: "Karyawan", jobdesk: "Gudang", status: "Aktif" },
+    { nama: "Leeta Le Torneau", role: "Karyawan", jobdesk: "Dapur", status: "Aktif" },
+    { nama: "Lore Woods", role: "Karyawan", jobdesk: "Dapur", status: "Aktif" },
+    { nama: "Virion Christanti", role: "Karyawan", jobdesk: "Gudang", status: "Aktif" },
+    { nama: "Lillith Graeme", role: "Karyawan", jobdesk: "Gudang", status: "Aktif" },
 ]
 
-// Filter hanya yang Role = Karyawan dan Status = Aktif, lalu kelompokkan berdasarkan jobdesk
-const groupedKaryawan = karyawanData
-    .filter(k => k.role === "Karyawan" && k.status === "Aktif")
-    .reduce((acc, curr) => {
-        if (!acc[curr.jobdesk]) {
-            acc[curr.jobdesk] = []
-        }
-        acc[curr.jobdesk].push(curr)
-        return acc
-    }, {})
-
-
-
-export default function addEvent() {
+export default function AddEvent() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedLocation, setSelectedLocation] = useState(null)
     const [polygon, setPolygon] = useState([])
     const [isDrawing, setIsDrawing] = useState(false)
     const [isReverseGeocoding, setIsReverseGeocoding] = useState(false)
+    const [dapurList, setDapurList] = useState([])
+    const [selectedSupervisor, setSelectedSupervisor] = useState('')
+    const [karyawanDapurSelected, setKaryawanDapurSelected] = useState([])
     const mapRef = useRef(null)
+
+    const kandidatSupervisor = ["Butler Winter", "Virion Christanti"]
+
+    const handleSupervisorChange = (e) => {
+        setSelectedSupervisor(e.target.value);
+    }
+
+    const handleAddMenu = () => {
+        setDapurList(prev => [...prev, { menu: '', stan: '', jumlah_porsi: '', penanggung_jawab: [] }])
+    }
+
+    const handleRemoveMenu = (index) => {
+        const newList = [...dapurList]
+        newList.splice(index, 1)
+        setDapurList(newList)
+    }
+
+    const handleChangeMenu = (index, field, value) => {
+        const updated = [...dapurList]
+        updated[index][field] = value
+        setDapurList(updated)
+    }
+
+    const handleCheckboxDapur = (nama) => {
+        setKaryawanDapurSelected((prev) =>
+            prev.includes(nama) ? prev.filter(n => n !== nama) : [...prev, nama]
+        );
+    }
+
     useEffect(() => {
         const map = mapRef.current
         if (!map) return
@@ -81,9 +97,7 @@ export default function addEvent() {
 
     const handleSearch = async () => {
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-                searchQuery
-            )}`
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
             const response = await axios.get(url)
             if (response.data && response.data.length > 0) {
                 const location = response.data[0]
@@ -99,149 +113,139 @@ export default function addEvent() {
     const handleReverseGeocode = async (lat, lon) => {
         try {
             const response = await axios.get("https://nominatim.openstreetmap.org/reverse", {
-                params: {
-                    lat,
-                    lon,
-                    format: 'json'
-                }
+                params: { lat, lon, format: 'json' }
             });
             if (response.data && response.data.address) {
-                const namaJalan = response.data.address.road || response.data.address.pedestrian || response.data.address.path || response.data.display_name;
+                const namaJalan = response.data.address.road || response.data.display_name;
                 setSearchQuery(namaJalan);
                 setSelectedLocation({ lat, lng: lon });
-            } else {
-                setSearchQuery("Lokasi tidak ditemukan")
             }
-            setSelectedLocation({ lat, lng });
         } catch (error) {
-            console.log("TERJADI ERROR DALAM PENCARIAN REVERSE GEOCODING", error)
+            console.log("TERJADI ERROR DALAM REVERSE GEOCODING", error)
         }
     }
 
-    const addPoint = (point) => {
-        setPolygon((prevPoints) => [...prevPoints, point]);
-    }
-
-    const handleClearPolygon = () => {
-        setPolygon([])
-    }
-
-    const toggleDrawing = () => {
-        setIsReverseGeocoding(false)
-        setIsDrawing((prev) => !prev)
-    }
-
-    const toggleReverseGeocoding = () => {
-        setIsDrawing(false)
-        setIsReverseGeocoding((prev) => !prev)
-    }
+    const addPoint = (point) => setPolygon((prev) => [...prev, point])
+    const handleClearPolygon = () => setPolygon([])
+    const toggleDrawing = () => { setIsReverseGeocoding(false); setIsDrawing((prev) => !prev) }
+    const toggleReverseGeocoding = () => { setIsDrawing(false); setIsReverseGeocoding((prev) => !prev) }
 
     return (
         <div className='space-y-8'>
             <h1 className="text-3xl font-bold">Managemnet Penjadwalan</h1>
-
             <hr />
 
+            {/* Info Acara */}
             <div>
-                <label htmlFor="" className="block mb-2 font-medium">Nama Acara</label>
+                <label className="block mb-2 font-medium">Nama Acara</label>
+                <input type="text" className="w-full border px-3 py-2 rounded" />
+            </div>
+            <div>
+                <label className="block mb-2 font-medium">Porsi</label>
                 <input type="text" className="w-full border px-3 py-2 rounded" />
             </div>
 
+            {/* Jadwal Prepare dan Service */}
             <div>
-                <label htmlFor="" className="block mb-2 font-medium">Porsi</label>
-                <input type="text" className="w-full border px-3 py-2 rounded" />
-            </div>
-
-            <div>
-                <label htmlFor="" className="block mb-2 font-medium">Prepare</label>
+                <label className="block mb-2 font-medium">Prepare</label>
                 <input type="date" className="w-full border px-3 py-2 rounded mb-3" />
-                <input type="time" className="w-full border px-3 py-2 rounded" />
+                <input type="time" className="w-full border px-3 py-2 rounded mb-2" placeholder='waktu mulai' />
+                <input type="time" className="w-full border px-3 py-2 rounded" placeholder='waktu selesai' />
             </div>
-
             <div>
-                <label htmlFor="" className="block mb-2 font-medium">Service</label>
+                <label className="block mb-2 font-medium">Service</label>
                 <input type="date" className="w-full border px-3 py-2 rounded mb-3" />
-                <input type="time" className="w-full border px-3 py-2 rounded" />
+                <input type="time" className="w-full border px-3 py-2 rounded mb-2" placeholder='waktu mulai' />
+                <input type="time" className="w-full border px-3 py-2 rounded" placeholder='waktu selesai' />
             </div>
 
+            {/* Supervisor */}
             <div>
-                <label htmlFor="" className="block mb-2 font-medium">Supervisior</label>
-                <select name="" id="" className="w-full border px-3 py-2 rounded">
-                    <option>-- Pilih Supervisior</option>
-                    <option value="">Ayda Fang</option>
-                    <option value="">Pamela Craft</option>
-                    <option value="">Emmit Nox</option>
-                    <option value="">Zayne Geulimja</option>
+                <label className="block mb-2 font-medium">Supervisior</label>
+                <select className="w-full border px-3 py-2 rounded" value={selectedSupervisor} onChange={handleSupervisorChange}>
+                    <option value="">-- Pilih Supervisior</option>
+                    {kandidatSupervisor.map((nama) => (
+                        <option key={nama} value={nama}>{nama}</option>
+                    ))}
                 </select>
             </div>
 
+            {/* Karyawan Gudang */}
             <div>
-                <h2 className="text-xl font-semibold mb-2">Pilih Karyawan Berdasarkan Jobdesk</h2>
-
-                {Object.entries(groupedKaryawan).map(([jobdesk, karyawans]) => (
-                    <div key={jobdesk} className="mb-4">
-                        <h3 className="font-medium mb-1">{jobdesk}</h3>
-                        <div className="pl-4 space-y-1">
-                            {karyawans.map((k) => (
+                <h2 className="text-xl font-semibold mb-2">Karyawan Gudang</h2>
+                <div className="pl-4 space-y-1">
+                    {karyawanData.filter(k => k.jobdesk === "Gudang").map((k) => (
+                        <label key={k.nama} className="block">
+                            <input
+                                type="checkbox"
+                                value={k.nama}
+                                className="mr-2 border-2 border-gray-950"
+                                disabled={selectedSupervisor === k.nama}
+                                defaultChecked
+                            />
+                            {k.nama} (Tahap: Prepare & Service)
+                            {selectedSupervisor === k.nama && <span className="text-sm text-red-500 ml-2">(Supervisor)</span>}
+                        </label>
+                    ))}
+                </div>
+            </div>
+            {/* Menu Dapur */}
+            <div>
+                <h2 className="text-xl font-semibold mb-2">Menu Dapur</h2>
+                {dapurList.map((item, index) => (
+                    <div key={index} className="border p-4 rounded mb-4 space-y-2">
+                        <input type="text" placeholder="Nama Menu" value={item.menu} onChange={(e) => handleChangeMenu(index, 'menu', e.target.value)} className="w-full border px-3 py-2 rounded" />
+                        <div className="pl-2 space-y-1">
+                            {karyawanData.filter(k => k.jobdesk === "Dapur").map((k) => (
                                 <label key={k.nama} className="block">
                                     <input
                                         type="checkbox"
                                         value={k.nama}
-                                        className="mr-2 border-2 border-gray-950"
+                                        checked={item.penanggung_jawab.includes(k.nama)}
+                                        onChange={(e) => {
+                                            const updated = [...item.penanggung_jawab];
+                                            if (e.target.checked) {
+                                                updated.push(k.nama);
+                                            } else {
+                                                const index = updated.indexOf(k.nama);
+                                                if (index > -1) updated.splice(index, 1);
+                                            }
+                                            handleChangeMenu(index, 'penanggung_jawab', updated);
+                                        }}
+                                        className="mr-2"
                                     />
-                                    {k.nama}
+                                    {k.nama} (Tahap: Service)
                                 </label>
                             ))}
                         </div>
+                        <button type="button" onClick={() => handleRemoveMenu(index)} className="text-red-600 text-sm">Hapus Menu</button>
                     </div>
                 ))}
+                <button type="button" onClick={handleAddMenu} className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-700">Tambah Menu Dapur</button>
             </div>
 
+            {/* Map dan Action */}
             <div className='mb-4 flex justify-around'>
-                <input
-                    type='text'
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder='Cari Lokasi'
-                    className='border px-3 py-2 rounded w-full'
-                />
-                <button type='button' onClick={handleSearch} className='bg-violet-500 text-white px-3 py-2 rounded ml-2 hover:bg-violet-700'>
-                    Cari
-                </button>
+                <input type='text' value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Cari Lokasi' className='border px-3 py-2 rounded w-full' />
+                <button type='button' onClick={handleSearch} className='bg-violet-500 text-white px-3 py-2 rounded ml-2 hover:bg-violet-700'>Cari</button>
             </div>
-
             <div className='mb-4'>
-                <button type='button' onClick={toggleDrawing} className='bg-green-500 text-white px-3 py-2 rounded hover:bg-green-700'>
-                    {isDrawing ? "Stop Menggambar Polygon" : "Gambar Polygon"}
-                </button>
-                <button type="button" onClick={handleClearPolygon} className='bg-red-500 text-white px-3 py-2 rounded ml-2 hover:bg-red-700'>
-                    Hapus Polygon
-                </button>
-                <button type="button" onClick={toggleReverseGeocoding} className='bg-amber-500 text-white px-3 py-2 rounded ml-2 hover:bg-amber-700'>
-                    {isReverseGeocoding ? "Stop Reverse Geocoding" : "Aktifkan Reverse Geocoding"}
-                </button>
+                <button type='button' onClick={toggleDrawing} className='bg-green-500 text-white px-3 py-2 rounded hover:bg-green-700'>{isDrawing ? "Stop Menggambar Polygon" : "Gambar Polygon"}</button>
+                <button type="button" onClick={handleClearPolygon} className='bg-red-500 text-white px-3 py-2 rounded ml-2 hover:bg-red-700'>Hapus Polygon</button>
+                <button type="button" onClick={toggleReverseGeocoding} className='bg-amber-500 text-white px-3 py-2 rounded ml-2 hover:bg-amber-700'>{isReverseGeocoding ? "Stop Reverse Geocoding" : "Aktifkan Reverse Geocoding"}</button>
             </div>
-
-            <MapContainer center={[0, 0]} zoom={2} style={{ height: "400px", width: "100%" }} ref={mapRef}
-                whenCreated={(mapInstance) => {
-                    mapRef.current = mapInstance
-                }}
-            >
+            <MapContainer center={[0, 0]} zoom={2} style={{ height: "400px", width: "100%" }} ref={mapRef} whenCreated={(mapInstance) => { mapRef.current = mapInstance }}>
                 <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                 {selectedLocation && <Marker position={selectedLocation} icon={costumIcon} />}
                 <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} isReverseGeocoding={isReverseGeocoding} handleReverseGeocode={handleReverseGeocode} />
-                {polygon.length > 0 && (
-                    <Polygon positions={polygon} pathOptions={{ color: 'purple' }} />
-                )}
+                {polygon.length > 0 && <Polygon positions={polygon} pathOptions={{ color: 'purple' }} />}
             </MapContainer>
-
             <div className="flex justify-end gap-3">
                 <button className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
                 <Link href="/admin/events">
                     <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                 </Link>
             </div>
-
         </div>
     )
 }

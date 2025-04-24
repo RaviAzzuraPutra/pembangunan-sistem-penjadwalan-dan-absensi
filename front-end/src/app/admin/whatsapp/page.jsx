@@ -1,11 +1,42 @@
 "use client";
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import axios from 'axios';
 
-const QRCode = dynamic(() => import('react-qr-code'), { ssr: false });
 
 export default function Whatsapp() {
+    const [QRImage, setQRImage] = useState(null);
+    const [loading, setLoading] = useState("loading...");
+
+    useEffect(() => {
+        const fetchQRCode = async () => {
+            try {
+                const response = await axios.get("http://localhost:5001/whatsapp/connect")
+                const data = response.data;
+
+                if (data.connected) {
+                    setLoading("connected")
+                } else if (data.qr) {
+                    setQRImage(data.qr);
+                    setLoading("Silahkan Scan QR Code di atas")
+                } else {
+                    setLoading(data.message || "Menunggu QR Code...");
+                }
+
+            } catch (error) {
+                console.error("Terjasi kesalahan saat mengambil QR Code:", error);
+                setLoading("Terjadi kesalahan saat mengambil QR Code")
+            }
+        }
+
+        fetchQRCode()
+
+        const interval = setInterval(() => {
+            fetchQRCode()
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <div className='flex flex-col items-center justify-center min-h-[80vh]'>
             <div className='bg-white p-10 rounded-3xl shadow-md flex flex-col items-center max-w-md w-full border-2 border-green-600'>
@@ -22,13 +53,11 @@ export default function Whatsapp() {
                     </h1>
                 </div>
                 <div className='mb-7 p-6 bg-white rounded-xl border-2 border-gray-200'>
-                    <QRCode
-                        value={'https://wa.me/6281312201169'}
-                        size={200}
-                        level={"H"}
-                        className="mx-auto"
-                        fgColor="#4CAF50"
-                    />
+                    {QRImage ? (
+                        <Image src={QRImage} alt="QR Code" width={200} height={200} unoptimized />
+                    ) : (
+                        <p className='text-sm text-bold text-slate-400'>{loading}</p>
+                    )}
                 </div>
 
                 <div className='text-center text-black'>
