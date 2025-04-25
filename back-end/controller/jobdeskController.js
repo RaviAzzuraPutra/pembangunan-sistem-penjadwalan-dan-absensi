@@ -26,10 +26,10 @@ exports.createJobdesk = async (req, res) => {
 exports.getAllJobdesk = async (req, res) => {
     await connect();
     try {
-        const jobdesk = await jobdesk.find({});
+        const Getjobdesk = await Jobdesk.find({});
         return res.status(200).json({
             message: "Berhasil mendapatkan semua jobdesk",
-            data: jobdesk
+            data: Getjobdesk
         });
     } catch (error) {
         return res.status(500).json({

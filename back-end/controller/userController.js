@@ -4,6 +4,7 @@ const multer = require("multer");
 const connect = require("../utils/connect");
 const { detectFace } = require("../utils/faceapi-function");
 const sendMessage = require("../utils/send-message");
+const Jobdesk = require("../models/Jobdesk");
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -16,6 +17,8 @@ exports.createUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 11);
         const slug = name.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
         const phone_replace = phone.replace(/^0/, "62");
+        const jobdeskData = await Jobdesk.find({ _id: { $in: jobdesk } });
+        const jobdeskName = jobdeskData.map(jd => jd.name).join(", ");
         const user = new User({
             name,
             slug: slug,
@@ -37,11 +40,11 @@ exports.createUser = async (req, res) => {
             `*ID Login:* ${generate_ID_Login}\n` +
             `*Password:* ${password}\n` +
             `*Nomor Telepon:* ${phone}\n` +
-            `*Slug Login:* ${slug}\n` +
             `*Role:* ${role}\n` +
             `*Status Supervisor:* ${is_supervisor_candidate ? "Supervisor" : "Bukan Supervisor"}\n` +
-            `*Jobdesk:* ${JSON.stringify(jobdesk, null, 2)}\n\n` +
-            `Silakan login menggunakan ID Login dan password di atas.`;
+            `*Jobdesk:* ${jobdeskName}\n\n` +
+            `Silakan login menggunakan ID Login dan password di atas.\n` +
+            `link login website: http://localhost:3000`;
 
         await sendMessage(phone_replace, message);
 
@@ -62,7 +65,8 @@ exports.createUser = async (req, res) => {
 exports.getAllUser = async (req, res) => {
     await connect();
     try {
-        const users = await User.find({});
+        const sortField = 'name';
+        const users = await User.find({ role: "karyawan" }).populate("jobdesk").sort({ [sortField]: 1 });
         if (!users || users.length === 0) {
             return res.status(404).json({
                 message: "User tidak ditemukan",
@@ -87,7 +91,7 @@ exports.getUserByID = async (req, res) => {
     await connect();
     try {
         const userID = req.params.id;
-        const user = await User.findById(userID);
+        const user = await User.findById(userID).populate("jobdesk");
         if (!user) {
             return res.status(404).json({
                 message: "User tidak ditemukan",
@@ -193,7 +197,7 @@ exports.updateUserByAdmin = async (req, res) => {
         const userID = req.params.id;
         const { name, password, phone, is_supervisor_candidate, jobdesk } = req.body;
 
-        const user = await User.findById(userID);
+        const user = await User.findByIdAndUpdate(userID, { new: true }).populate("jobdesk");
 
         if (!user) {
             return res.status(404).json({
@@ -243,9 +247,11 @@ exports.updateUserByAdmin = async (req, res) => {
         if (updatedField.length > 0) {
             const phone_replace = (phone || user.phone).replace(/^0/, "62");
             let message = "";
+            const jobdeskData = await Jobdesk.find({ _id: { $in: jobdesk } });
+            const jobdeskName = jobdeskData.map(jd => jd.name).join(", ");
 
             if (updatedField.length === 1) {
-                switch (field) {
+                switch (updatedField[0]) {
                     case "nama":
                         message = `Hallo nama anda telah diperbarui menjadi ${newValues.name}`;
                         break;
@@ -259,7 +265,7 @@ exports.updateUserByAdmin = async (req, res) => {
                         message = `Halo ${user.name}, status Anda telah diperbarui menjadi: *${newValues.is_supervisor_candidate}*`;
                         break;
                     case "jobdesk":
-                        message = `Hallo ${user.name}, jobdesk anda telah diperbarui menjadi ${newValues.jobdesk}`;
+                        message = `Hallo ${user.name}, jobdesk anda telah diperbarui menjadi ${jobdeskName}`;
                         break;
                 }
             } else {
@@ -267,18 +273,17 @@ exports.updateUserByAdmin = async (req, res) => {
                     `*Nama:* ${user.name}\n` +
                     `*Nomor Telepon:* ${user.phone}\n` +
                     (password ? `*Password Baru:* ${newValues.password}\n` : "") +
-                    `*Slug Login:* ${user.slug}\n` +
                     `*Status Supervisor:* ${user.is_supervisor_candidate ? "Supervisor" : "Bukan Supervisor"}\n` +
                     `*Jobdesk:* ${JSON.stringify(user.jobdesk, null, 2)}`;
             }
+            await sendMessage(phone_replace, message);
         }
 
-        await sendMessage(phone_replace, message);
 
         return res.status(200).json({
             success: true,
             message: "Berhasil Update Data",
-            data: update
+            data: user
         });
     } catch (error) {
         return res.status(500).json({

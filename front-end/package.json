@@ -18,7 +18,8 @@
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
     "react-qr-code": "^2.0.15",
-    "simple-datatables": "^10.0.0"
+    "simple-datatables": "^10.0.0",
+    "sweetalert2": "^11.19.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
