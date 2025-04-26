@@ -1,16 +1,38 @@
 "use client"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import Image from "next/image"
 import menuItems from "../components/menuItems"
+import axios from "axios"
+import AuthCheck from "../utils/authCheck"
 
 export default function Sidebar() {
     const pathname = usePathname()
     const [isOpen, setIsOpen] = useState(false)
+    const router = useRouter();
 
     const toggleSidebar = () => {
         setIsOpen(!isOpen)
+    }
+
+    const handleLogout = async () => {
+        try {
+            const response = await axios.post("http://localhost:5001/auth/logout", {}, {
+                withCredentials: true,
+            });
+            if (response.data.success) {
+                router.replace("/login");
+            }
+        } catch (error) {
+            console.error("Logout failed:", error);
+            router.replace("/login");
+        }
+
+        if (isOpen) {
+            setIsOpen(false)
+        }
+
     }
 
     return (
@@ -70,11 +92,7 @@ export default function Sidebar() {
                     <Link
                         href="/login"
                         className="flex items-center px-5 py-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-300 hover:text-black"
-                        onClick={() => {
-                            if (isOpen) {
-                                setIsOpen(false)
-                            }
-                        }}
+                        onClick={() => handleLogout()}
                     >
                         <Image
                             src="/icons/logout.png"

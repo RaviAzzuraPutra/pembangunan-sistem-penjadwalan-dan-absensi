@@ -6,11 +6,13 @@ import Link from "next/link";
 import Swal from "sweetalert2";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
+import { useRouter } from "next/router";
 
 export default function Users() {
     const searchParams = useSearchParams();
     const [users, setUsers] = useState([]);
-
+    const router = useRouter();
+    const { slug } = router.query;
 
     useEffect(() => {
         const success = searchParams.get('success');
@@ -164,7 +166,7 @@ export default function Users() {
             <h1 className="text-3xl font-bold">Management Pengguna</h1>
             <hr />
             <div className="overflow-x-auto relative shadow-md md:overflow-visible">
-                <Link href={"/admin/users/addUser"}>
+                <Link href={`/admin/${slug}/users/addUser`}>
                     <button className="bg-stone-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-stone-700 mb-3 mt-3">+ TAMBAH PENGGUNA</button>
                 </Link>
                 <table id="search-table">
@@ -206,7 +208,7 @@ export default function Users() {
                                 <td>{user.jobdesk.map(jd => jd.name).join(", ")}</td>
                                 <td className="flex gap-2">
                                     <button className="bg-green-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-green-700" onClick={() => fetchUserByID(user._id)}>INFO</button>
-                                    <Link href={`/admin/users/updateUser/${user._id}`}>
+                                    <Link href={`/admin/${slug}/users/updateUser/${user._id}`}>
                                         <button className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">EDIT</button>
                                     </Link>
                                     <button className="bg-red-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-red-700" onClick={() => deleteUser(user._id)}>DELETE</button>

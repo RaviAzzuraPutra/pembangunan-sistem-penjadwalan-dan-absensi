@@ -4,13 +4,12 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
-import { useParams } from 'next/navigation'
 
-export default function UpdateUser() {
+export default function AddUser() {
     const router = useRouter();
-    const { id } = useParams();  // Mengambil ID pengguna dari URL
     const [jobdesk, setJobdesk] = useState([]);
     const [selectedJobdesk, setSelectedJobdesk] = useState([]);
+    const { slug } = router.query;
     const [formData, setFormData] = useState({
         name: "",
         password: "",
@@ -28,25 +27,8 @@ export default function UpdateUser() {
                 console.error("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
             }
         }
-        const fetchUserData = async () => {
-            try {
-                const response = await axios.get(`http://localhost:5001/user/${id}`);
-                const user = response.data.data;
-                setFormData({
-                    name: user.name,
-                    password: "",  // Password tidak bisa diambil secara langsung
-                    phone: user.phone,
-                    is_supervisor_candidate: user.is_supervisor_candidate,
-                    role: "karyawan",  // Set default jika diperlukan
-                });
-                setSelectedJobdesk(user.jobdesk.map(jd => jd._id));  // Set jobdesk yang dipilih
-            } catch (error) {
-                console.error("Gagal mengambil data pengguna:", error);
-            }
-        }
         fetchJobdesk();
-        fetchUserData();
-    }, [id]);
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -74,14 +56,15 @@ export default function UpdateUser() {
                 jobdesk: selectedJobdesk,
             }
 
-            const response = await axios.put(`http://localhost:5001/user/update-admin/${id}`, payload);
+            const response = await axios.post("http://localhost:5001/user/create", payload);
 
             const successStatus = response.data.success ? 'true' : 'false';
-            router.push(`/admin/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
+            router.push(`/admin/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
             const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Pengguna";
-            router.push(`/admin/users?success=false&message=${encodeURIComponent(errorMessage)}`);
+            router.push(`/admin/${slug}/users?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
+
     }
 
     const selectedCategories = jobdesk
@@ -95,7 +78,7 @@ export default function UpdateUser() {
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold">Update Pengguna</h1>
+            <h1 className="text-3xl font-bold">Tambah Pengguna</h1>
             <hr />
             <form onSubmit={handleSubmit} className="space-y-5 p-7 rounded-lg shadow-md max-w-lg w-full">
                 <div>
@@ -116,7 +99,8 @@ export default function UpdateUser() {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        placeholder="masukkan password (biarkan kosong jika tidak ingin diubah)"
+                        required
+                        placeholder="masukkan password"
                     />
                 </div>
                 <div>
