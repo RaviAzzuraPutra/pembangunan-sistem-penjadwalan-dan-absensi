@@ -1,15 +1,17 @@
 "use client"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname, useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 import Image from "next/image"
-import menuItems from "../components/menuItems"
+import getMenuItems from "../components/menuItems"
 import axios from "axios"
-import AuthCheck from "../utils/authCheck"
 
 export default function Sidebar() {
     const pathname = usePathname()
     const [isOpen, setIsOpen] = useState(false)
+    const params = useParams();
+    const slug = params.slug;
+    const menuItems = getMenuItems(slug);
     const router = useRouter();
 
     const toggleSidebar = () => {

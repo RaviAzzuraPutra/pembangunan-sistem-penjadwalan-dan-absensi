@@ -6,6 +6,8 @@ const whatsappRouter = require("./routes/whatsappRouter");
 const userRouter = require("./routes/userRouter");
 const jobdeskRouter = require("./routes/jobdeskRouter");
 const authRouter = require("./routes/authRouter");
+const eventRouter = require("./routes/eventRouter");
+const test = require("./routes/TestResponseRouter");
 const port = process.env.PORT
 const cookieParser = require("cookie-parser");
 
@@ -22,6 +24,8 @@ app.use("/whatsapp", whatsappRouter);
 app.use("/user", userRouter);
 app.use("/jobdesk", jobdeskRouter);
 app.use("/auth", authRouter);
+app.use("/event", eventRouter);
+app.use("/test-face", test);
 
 app.listen(port, () => {
     console.log(`Server berjalan pada port http://localhost:${port}`);

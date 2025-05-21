@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 
 export default function AddUser() {
-    const router = useRouter();
+    const params = useParams();
     const [jobdesk, setJobdesk] = useState([]);
     const [selectedJobdesk, setSelectedJobdesk] = useState([]);
-    const { slug } = router.query;
+    const slug = params.slug;
+    const router = useRouter();
     const [formData, setFormData] = useState({
         name: "",
         password: "",
@@ -194,7 +195,7 @@ export default function AddUser() {
                 </div>
                 <div className="flex justify-end gap-3">
                     <button className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
-                    <Link href="/admin/users">
+                    <Link href={`/admin/${slug}/users`}>
                         <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                     </Link>
                 </div>

@@ -7,11 +7,10 @@ import { useRouter } from "next/navigation"
 import { useParams } from 'next/navigation'
 
 export default function UpdateUser() {
-    const router = useRouter();
-    const { id } = useParams();  // Mengambil ID pengguna dari URL
+    const { id, slug } = useParams();  // Mengambil ID pengguna dari URL
     const [jobdesk, setJobdesk] = useState([]);
     const [selectedJobdesk, setSelectedJobdesk] = useState([]);
-    const { slug } = router.query;
+    const router = useRouter();
     const [formData, setFormData] = useState({
         name: "",
         password: "",

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 
 export default function AuthCheck() {
     const router = useRouter();
+    const pathname = usePathname(); // FIX: ini yang belum ada
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -16,19 +17,19 @@ export default function AuthCheck() {
 
                 const { user } = response.data;
                 if (user) {
-                    if (user.role === "admin") {
+                    if (user.role === "admin" && !pathname.includes("/admin")) {
                         router.replace(`/admin/${user.slug}`);
-                    } else if (user.role === "karyawan") {
+                    } else if (user.role === "karyawan" && !pathname.includes("/employees")) {
                         router.replace(`/employees/${user.slug}`);
                     }
                 }
             } catch (error) {
                 router.replace("/login");
             }
-        }
+        };
 
         checkAuth();
-    }, [])
+    }, [pathname]); // tambahkan dependency pathname agar rerender bila path berubah
 
     return null;
 }

@@ -5,7 +5,6 @@ import AuthCheck from "../utils/authCheck";
 export default function Home() {
   return (
     <>
-      <AuthCheck />
       <div className="flex items-center justify-center min-h-screen w-full p-5 bg-gradient-to-b from-gray-100 to-gray-300">
         <div className="border border-gray-300 bg-white rounded-xl py-8 px-6 sm:px-8 md:px-12 lg:px-16 flex flex-col items-center w-full max-w-lg md:max-w-xl lg:max-w-2xl shadow-lg">
           <div className="rounded-full border-4 border-gray-300 bg-white overflow-hidden mb-6 w-32 h-32 flex items-center justify-center shadow-md">

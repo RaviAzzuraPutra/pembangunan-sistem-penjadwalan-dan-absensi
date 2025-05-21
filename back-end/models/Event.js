@@ -13,9 +13,9 @@ const EventSchema = new mongoose.Schema({
     supervisor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     location: {
         name: String,
-        address: String,
-        longitude: Number,
+        address: mongoose.Schema.Types.Mixed,
         latitude: Number,
+        longitude: Number,
         polygon: {
             type: [[Number]],
             default: [],
@@ -36,6 +36,7 @@ const EventSchema = new mongoose.Schema({
         jumlah_porsi: Number,
         penanggung_jawab: [{
             user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            name: String,
             confirmation: {
                 status: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' },
                 timestamp: Date

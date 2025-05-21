@@ -2,24 +2,8 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { DataTable } from 'simple-datatables';
-import 'simple-datatables/dist/style.css';
 
 export default function AttendanceData() {
-    useEffect(() => {
-
-        if (typeof window !== 'undefined') {
-            const table = document.getElementById("search-table");
-            if (table && typeof DataTable !== 'undefined') {
-                new DataTable(table, {
-                    searchable: true,
-                    sortable: false,
-                    perPage: 5,
-                });
-            }
-        }
-
-    }, [])
 
     return (
         <div className="space-y-8">

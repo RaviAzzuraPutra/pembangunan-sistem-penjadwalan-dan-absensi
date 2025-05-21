@@ -1,18 +1,18 @@
 "use client"
 import { useEffect, useState } from "react"
-import { DataTable } from 'simple-datatables';
-import 'simple-datatables/dist/style.css';
+import DataTable from 'react-data-table-component';
 import Link from "next/link";
 import Swal from "sweetalert2";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import axios from "axios";
-import { useRouter } from "next/router";
 
 export default function Users() {
     const searchParams = useSearchParams();
     const [users, setUsers] = useState([]);
-    const router = useRouter();
-    const { slug } = router.query;
+    const [filteredUsers, setFilteredUsers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const params = useParams();
+    const slug = params.slug;
 
     useEffect(() => {
         const success = searchParams.get('success');
@@ -35,6 +35,7 @@ export default function Users() {
             try {
                 const response = await axios.get("http://localhost:5001/user");
                 setUsers(response.data.data);
+                setFilteredUsers(response.data.data);
             } catch (error) {
                 console.error("Terjadi Error Saat Mengambil Data Pengguna.:", error);
             }
@@ -42,187 +43,153 @@ export default function Users() {
         fetchUsers();
     }, []);
 
+    useEffect(() => {
+        const filtered = users.filter(user =>
+            user.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredUsers(filtered);
+    }, [searchTerm, users]);
+
+    const columns = [
+        {
+            name: 'Nama',
+            selector: row => row.name,
+            sortable: true,
+        },
+        {
+            name: 'No Telepon',
+            selector: row => row.phone,
+        },
+        {
+            name: 'Supervisor',
+            selector: row => row.is_supervisor_candidate ? 'Ya' : 'Tidak',
+        },
+        {
+            name: 'Jobdesk',
+            selector: row => row.jobdesk.map(jd => jd.name).join(", "),
+        },
+        {
+            name: 'Aksi',
+            cell: row => (
+                <div className="flex gap-2 justify-between">
+                    <button
+                        className="bg-green-500 text-white py-2 px-2 text-sm rounded hover:bg-green-700"
+                        onClick={() => fetchUserByID(row._id)}
+                    >
+                        Info
+                    </button>
+                    <button
+                        className="bg-blue-500 text-white py-2 px-2 text-sm rounded hover:bg-blue-700"
+                        onClick={() => window.location.href = `/admin/${slug}/users/updateUser/${row._id}`}
+                    >
+                        Edit
+                    </button>
+                    <button
+                        className="bg-red-500 text-white py-2 px-2 text-sm rounded hover:bg-red-700"
+                        onClick={() => deleteUser(row._id)}
+                    >
+                        Hapus
+                    </button>
+                </div>
+            )
+        }
+    ];
+
     const fetchUserByID = async (userID) => {
         try {
-            console.log("Fetching user with ID:", userID);
             const response = await axios.get(`http://localhost:5001/user/${userID}`)
-            console.log("User data:", response.data.data);
             const user = response.data.data;
-            if (response.status === 200) {
-                Swal.fire({
-                    title: `Detail Pengguna ${user.name}`,
-                    html: `
-                        <div style="text-align: Left"> 
-                        <p>ID : ${user._id}</p>
-                        <p>Nama : ${user.name}</p>
-                        <p>Slug : ${user.slug}</p>
-                        <p>Login : ${user.ID_Login}</p>
-                        <p>No Telephone : ${user.phone}</p>
-                        <p>Role : ${user.role}</p>
-                        <p>Supervisor : ${user.is_supervisor_candidate ? "ya" : "Tidak"}</p>
-                        <p>Jobdesk : ${user.jobdesk.map(jd => jd.name).join(", ")}</p>
-                        <p>Data Wajah : ${user.face_data}</p>
-                        <p>Tanggal Dibuat : ${new Date(user.createdAt).toLocaleString("id-ID", {
-                        dateStyle: "full",
-                        timeStyle: "short",
-                        timeZone: "Asia/Jakarta"
-                    })}</p>
-                        </div>                    
-                    `,
-                    icon: "info",
-                    confirmButtonText: "Tutup"
-                })
-            } else if (response.status === 404) {
-                Swal.fire({
-                    title: "Error!!!",
-                    text: "Data Pengguna Tidak Ditemukan 404",
-                    icon: "error",
-                    confirmButtonText: "Tutup"
-                })
-            } else if (response.status === 500) {
-                Swal.fire({
-                    title: "Error!!!",
-                    text: "Terjadi Kesalahan Server",
-                    icon: "error",
-                    confirmButtonText: "Tutup"
-                })
-            }
+            Swal.fire({
+                title: `Detail Pengguna ${user.name}`,
+                html: `
+                    <div style="text-align: left; font-size: 16px"> 
+                    <p><strong>ID:</strong> ${user._id}</p>
+                    <p><strong>Nama:</strong> ${user.name}</p>
+                    <p><strong>Slug:</strong> ${user.slug}</p>
+                    <p><strong>Login:</strong> ${user.ID_Login}</p>
+                    <p><strong>No Telp:</strong> ${user.phone}</p>
+                    <p><strong>Role:</strong> ${user.role}</p>
+                    <p><strong>Supervisor:</strong> ${user.is_supervisor_candidate ? "ya" : "Tidak"}</p>
+                    <p><strong>Jobdesk:</strong> ${user.jobdesk.map(jd => jd.name).join(", ")}</p>
+                    <p><strong>Wajah:</strong> ${user.face_data}</p>
+                    <p><strong>Dibuat:</strong> ${new Date(user.createdAt).toLocaleString("id-ID", {
+                    dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta"
+                })}</p>
+                    </div>`,
+                icon: "info",
+                confirmButtonText: "Tutup"
+            });
         } catch (error) {
             Swal.fire({
-                title: "Error!!!",
-                text: "Data Pengguna Tidak Ditemukan",
+                title: "Error",
+                text: "Tidak bisa menampilkan data pengguna",
                 icon: "error",
                 confirmButtonText: "Tutup"
-            })
+            });
         }
-    }
+    };
 
     const deleteUser = async (userID) => {
         const response = await axios.get(`http://localhost:5001/user/${userID}`)
         const user = response.data.data;
         const confirm = await Swal.fire({
-            title: `Yakin ingin menghapus pengguna ${user.name}?`,
-            text: "Tindakan tidak dapat dibatalkan!",
+            title: `Hapus ${user.name}?`,
+            text: "Tindakan ini tidak bisa dibatalkan.",
             icon: "warning",
             showCancelButton: true,
             confirmButtonText: "Ya",
             cancelButtonText: "Tidak",
-            confirmButtonColor: "#FF0000",
-            cancelButtonColor: "#40E0D0",
         });
 
         if (confirm.isConfirmed) {
             try {
-                const response = await axios.delete(`http://localhost:5001/user/delete/${userID}`);
-                if (response.status === 200) {
-                    Swal.fire({
-                        title: "Berhasil!!!",
-                        text: `Pengguna ${user.name} Berhasil Dihapus`,
-                        icon: "success",
-                        confirmButtonText: "Tutup"
-                    })
-                    setUsers(users.filter(user => user._id !== userID));
-                } else if (response.status === 404) {
-                    Swal.fire({
-                        title: "Error!!!",
-                        text: "Data Pengguna Tidak Ditemukan 404",
-                        icon: "error",
-                        confirmButtonText: "Tutup"
-                    })
-                } else if (response.status === 500) {
-                    Swal.fire({
-                        title: "Error!!!",
-                        text: "Terjadi Kesalahan Server",
-                        icon: "error",
-                        confirmButtonText: "Tutup"
-                    })
+                const res = await axios.delete(`http://localhost:5001/user/delete/${userID}`);
+                if (res.status === 200) {
+                    Swal.fire("Berhasil!", `Pengguna ${user.name} dihapus.`, "success");
+                    setUsers(users.filter(u => u._id !== userID));
                 }
             } catch (error) {
-                Swal.fire({
-                    title: "Error!!!",
-                    text: "Terjadi Kesalahan Saat Menghapus Pengguna",
-                    icon: "error",
-                    confirmButtonText: "Tutup"
-                })
+                Swal.fire("Error", "Gagal menghapus pengguna", "error");
             }
         }
-    }
-
-    useEffect(() => {
-        if (typeof window !== 'undefined' && users.length > 0) {
-            const table = document.getElementById("search-table");
-            if (table && typeof DataTable !== 'undefined') {
-                new DataTable(table, {
-                    searchable: true,
-                    sortable: false,
-                    perPage: 5,
-                });
-            }
-        }
-    }, [users]);
+    };
 
     return (
-        <div className="space-y-8">
-            <h1 className="text-3xl font-bold">Management Pengguna</h1>
-            <hr />
-            <div className="overflow-x-auto relative shadow-md md:overflow-visible">
+        <div className="space-y-6">
+            <h1 className="text-3xl font-bold">Manajemen Pengguna</h1>
+            <div className="flex justify-between items-center">
                 <Link href={`/admin/${slug}/users/addUser`}>
-                    <button className="bg-stone-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-stone-700 mb-3 mt-3">+ TAMBAH PENGGUNA</button>
+                    <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH PENGGUNA</button>
                 </Link>
-                <table id="search-table">
-                    <thead>
-                        <tr>
-                            <th>
-                                <span className="flex items-center">
-                                    Nama
-                                </span>
-                            </th>
-                            <th>
-                                <span className="flex items-center">
-                                    No Telepon
-                                </span>
-                            </th>
-                            <th>
-                                <span className="flex items-center">
-                                    Supervisor
-                                </span>
-                            </th>
-                            <th>
-                                <span className="flex items-center">
-                                    Jobdesk
-                                </span>
-                            </th>
-                            <th>
-                                <span className="flex items-center">
-                                    Aksi
-                                </span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map((user, id) => (
-                            <tr className="hover:bg-slate-100" key={id}>
-                                <td className="font-medium text-black whitespace-nowra">{user.name}</td>
-                                <td>{user.phone}</td>
-                                <td>{user.is_supervisor_candidate ? "ya" : "Tidak"}</td>
-                                <td>{user.jobdesk.map(jd => jd.name).join(", ")}</td>
-                                <td className="flex gap-2">
-                                    <button className="bg-green-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-green-700" onClick={() => fetchUserByID(user._id)}>INFO</button>
-                                    <Link href={`/admin/${slug}/users/updateUser/${user._id}`}>
-                                        <button className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">EDIT</button>
-                                    </Link>
-                                    <button className="bg-red-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-red-700" onClick={() => deleteUser(user._id)}>DELETE</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <input
+                    type="text"
+                    placeholder="Cari nama pengguna..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="mt-5 w-full md:w-1/2 border border-gray-300 rounded text-lg"
+                />
             </div>
+            <DataTable
+                columns={columns}
+                data={filteredUsers}
+                pagination
+                paginationPerPage={5}
+                highlightOnHover
+                customStyles={{
+                    rows: {
+                        style: {
+                            fontSize: '16px',
+                        }
+                    },
+                    headCells: {
+                        style: {
+                            fontSize: '18px',
+                            fontWeight: 'bold',
+                            backgroundColor: '#f5f5f5',
+                        }
+                    }
+                }}
+            />
         </div>
-
-
-
-
-
-    )
+    );
 }

@@ -40,7 +40,6 @@ exports.createUser = async (req, res) => {
             `*ID Login:* ${generate_ID_Login}\n` +
             `*Password:* ${password}\n` +
             `*Nomor Telepon:* ${phone}\n` +
-            `*Role:* ${role}\n` +
             `*Status Supervisor:* ${is_supervisor_candidate ? "Supervisor" : "Bukan Supervisor"}\n` +
             `*Jobdesk:* ${jobdeskName}\n\n` +
             `Silakan login menggunakan ID Login dan password di atas.\n` +
@@ -117,6 +116,9 @@ exports.deleteUser = async (req, res) => {
     try {
         const userID = req.params.id;
         const user = await User.findByIdAndDelete(userID);
+
+        sendMessage(user.phone, `Hallo ${user.name}, Akun Anda telah dihapus oleh admin`);
+
         if (!user) {
             return res.status(404).json({
                 message: "User tidak ditemukan",
@@ -197,7 +199,7 @@ exports.updateUserByAdmin = async (req, res) => {
         const userID = req.params.id;
         const { name, password, phone, is_supervisor_candidate, jobdesk } = req.body;
 
-        const user = await User.findByIdAndUpdate(userID, { new: true }).populate("jobdesk");
+        const user = await User.findByIdAndUpdate(userID).populate("jobdesk");
 
         if (!user) {
             return res.status(404).json({
@@ -239,7 +241,10 @@ exports.updateUserByAdmin = async (req, res) => {
         if (jobdesk) {
             user.jobdesk = jobdesk;
             updatedField.push("jobdesk");
-            newValues.jobdesk = JSON.stringify(jobdesk);
+
+            const jobdeskData = await Jobdesk.find({ _id: { $in: jobdesk } });
+            const jobdeskName = jobdeskData.map(jd => jd.name);
+            newValues.jobdesk = jobdeskName;
         }
 
         await user.save();
@@ -265,7 +270,7 @@ exports.updateUserByAdmin = async (req, res) => {
                         message = `Halo ${user.name}, status Anda telah diperbarui menjadi: *${newValues.is_supervisor_candidate}*`;
                         break;
                     case "jobdesk":
-                        message = `Hallo ${user.name}, jobdesk anda telah diperbarui menjadi ${jobdeskName}`;
+                        message = `Hallo ${user.name}, jobdesk anda telah diperbarui menjadi ${newValues.jobdesk.join(", ")}`;
                         break;
                 }
             } else {
@@ -274,7 +279,7 @@ exports.updateUserByAdmin = async (req, res) => {
                     `*Nomor Telepon:* ${user.phone}\n` +
                     (password ? `*Password Baru:* ${newValues.password}\n` : "") +
                     `*Status Supervisor:* ${user.is_supervisor_candidate ? "Supervisor" : "Bukan Supervisor"}\n` +
-                    `*Jobdesk:* ${JSON.stringify(user.jobdesk, null, 2)}`;
+                    `*Jobdesk:* ${newValues.jobdesk ? newValues.jobdesk.join(", ") : user.jobdesk.map(jd => jd.name).join(", ")}`;
             }
             await sendMessage(phone_replace, message);
         }

@@ -45,7 +45,6 @@ export default function LoginPage() {
 
     return (
         <>
-            <AuthCheck />
             <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-gray-100 to-gray-300">
                 <div className="w-full max-w-md flex flex-col">
                     <div className="bg-gray-500 p-5 flex items-center justify-center">
