@@ -6,7 +6,7 @@ import axios from "axios";
 
 export default function AuthCheck() {
     const router = useRouter();
-    const pathname = usePathname(); // FIX: ini yang belum ada
+    const pathname = usePathname();
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -29,7 +29,7 @@ export default function AuthCheck() {
         };
 
         checkAuth();
-    }, [pathname]); // tambahkan dependency pathname agar rerender bila path berubah
+    }, [pathname]);
 
     return null;
 }

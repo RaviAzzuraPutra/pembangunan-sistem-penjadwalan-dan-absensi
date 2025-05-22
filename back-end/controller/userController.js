@@ -1,7 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const multer = require("multer");
-const connect = require("../utils/connect");
 const { detectFace } = require("../utils/faceapi-function");
 const sendMessage = require("../utils/send-message");
 const Jobdesk = require("../models/Jobdesk");
@@ -10,7 +9,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 exports.createUser = async (req, res) => {
-    await connect();
+
     try {
         let generate_ID_Login = Math.floor(100000 + Math.random() * 900000).toString();
         const { name, password, phone, role, is_supervisor_candidate, jobdesk } = req.body;
@@ -62,16 +61,11 @@ exports.createUser = async (req, res) => {
 }
 
 exports.getAllUser = async (req, res) => {
-    await connect();
+
     try {
         const sortField = 'name';
         const users = await User.find({ role: "karyawan" }).populate("jobdesk").sort({ [sortField]: 1 });
-        if (!users || users.length === 0) {
-            return res.status(404).json({
-                message: "User tidak ditemukan",
-                success: false,
-            });
-        }
+        if (!users.length) return res.status(200).json({ data: [] });
         return res.status(200).json({
             message: "Berhasil Mengambil Data User",
             data: users,
@@ -87,7 +81,7 @@ exports.getAllUser = async (req, res) => {
 }
 
 exports.getUserByID = async (req, res) => {
-    await connect();
+
     try {
         const userID = req.params.id;
         const user = await User.findById(userID).populate("jobdesk");
@@ -112,7 +106,7 @@ exports.getUserByID = async (req, res) => {
 }
 
 exports.deleteUser = async (req, res) => {
-    await connect();
+
     try {
         const userID = req.params.id;
         const user = await User.findByIdAndDelete(userID);
@@ -140,7 +134,7 @@ exports.deleteUser = async (req, res) => {
 }
 
 exports.selfUpdateUser = async (req, res) => {
-    await connect();
+
     try {
         upload.single("face")(req, res, async (error) => {
             if (error) {
@@ -163,23 +157,50 @@ exports.selfUpdateUser = async (req, res) => {
                 });
             }
 
+            const updatedFields = [];
+
             if (password) {
                 const hashedPassword = await bcrypt.hash(password, 11);
                 user.password = hashedPassword;
+                updatedFields.push("password");
             }
 
             if (phone) {
-                user.phone = phone;
+                let normalizedPhone = phone;
+                if (phone.startsWith("0")) {
+                    normalizedPhone = "62" + phone.slice(1);
+                }
+                user.phone = normalizedPhone;
+                updatedFields.push("phone");
             }
 
             if (req.file) {
                 const faceDescriptor = await detectFace(req.file.buffer);
                 user.face_data = JSON.stringify(Array.from(faceDescriptor));
+                updatedFields.push("face_data");
             }
 
             await user.save();
+
+            let message = "Berhasil memperbarui data!";
+
+            // Optional: Ubah pesan jika hanya satu field yang diubah
+            if (updatedFields.length === 1) {
+                switch (updatedFields[0]) {
+                    case "password":
+                        message = "Berhasil Mengubah Password!!!";
+                        break;
+                    case "phone":
+                        message = "Berhasil Mengubah No Telephone!!!";
+                        break;
+                    case "face_data":
+                        message = "Berhasil Mengubah Data Wajah!!!";
+                        break;
+                }
+            }
+
             return res.status(200).json({
-                message: "Berhasil Memperbarui Data User",
+                message,
                 data: user,
                 success: true,
             });
@@ -194,7 +215,7 @@ exports.selfUpdateUser = async (req, res) => {
 }
 
 exports.updateUserByAdmin = async (req, res) => {
-    await connect();
+
     try {
         const userID = req.params.id;
         const { name, password, phone, is_supervisor_candidate, jobdesk } = req.body;

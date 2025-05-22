@@ -65,10 +65,6 @@ export default function Users() {
             selector: row => row.is_supervisor_candidate ? 'Ya' : 'Tidak',
         },
         {
-            name: 'Jobdesk',
-            selector: row => row.jobdesk.map(jd => jd.name).join(", "),
-        },
-        {
             name: 'Aksi',
             cell: row => (
                 <div className="flex gap-2 justify-between">
@@ -108,10 +104,8 @@ export default function Users() {
                     <p><strong>Slug:</strong> ${user.slug}</p>
                     <p><strong>Login:</strong> ${user.ID_Login}</p>
                     <p><strong>No Telp:</strong> ${user.phone}</p>
-                    <p><strong>Role:</strong> ${user.role}</p>
                     <p><strong>Supervisor:</strong> ${user.is_supervisor_candidate ? "ya" : "Tidak"}</p>
                     <p><strong>Jobdesk:</strong> ${user.jobdesk.map(jd => jd.name).join(", ")}</p>
-                    <p><strong>Wajah:</strong> ${user.face_data}</p>
                     <p><strong>Dibuat:</strong> ${new Date(user.createdAt).toLocaleString("id-ID", {
                     dateStyle: "full", timeStyle: "short", timeZone: "Asia/Jakarta"
                 })}</p>

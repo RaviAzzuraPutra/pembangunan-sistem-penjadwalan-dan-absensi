@@ -1,8 +1,7 @@
-const connect = require("../utils/connect");
 const Jobdesk = require("../models/Jobdesk");
 
 exports.createJobdesk = async (req, res) => {
-    await connect();
+
     try {
         const { name, category, description } = req.body;
         const jobdesk = new Jobdesk({
@@ -24,7 +23,7 @@ exports.createJobdesk = async (req, res) => {
 }
 
 exports.getAllJobdesk = async (req, res) => {
-    await connect();
+
     try {
         const Getjobdesk = await Jobdesk.find({});
         return res.status(200).json({

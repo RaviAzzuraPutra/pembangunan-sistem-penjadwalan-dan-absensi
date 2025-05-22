@@ -12,8 +12,6 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
     return (
-
-
         <div className="flex h-screen">
             <Sidebar />
             <main className="flex-1 p-7 md:p-10 md:ml-64 overflow-y-auto">

@@ -9,11 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/face_detection": "^0.4.1646425229",
     "axios": "^1.8.4",
+    "canvas": "^3.1.0",
     "flowbite": "^3.1.2",
     "flowbite-react": "^0.11.7",
     "leaflet": "^1.9.4",
     "next": "15.1.4",
+    "next-pwa": "^5.6.0",
     "react": "^19.0.0",
     "react-data-table-component": "^7.7.0",
     "react-dom": "^19.0.0",

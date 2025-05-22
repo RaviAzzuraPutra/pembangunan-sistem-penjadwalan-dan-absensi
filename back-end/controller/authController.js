@@ -1,14 +1,13 @@
 const bcrypt = require("bcrypt");
-const connect = require("../utils/connect");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 exports.login = async (req, res) => {
-    connect();
+
     try {
         const { ID_Login, password } = req.body;
-        const user = await User.findOne({ ID_Login });
+        const user = await User.findOne({ ID_Login }).populate("jobdesk");
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -16,7 +15,7 @@ exports.login = async (req, res) => {
             });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
@@ -43,7 +42,12 @@ exports.login = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 slug: user.slug,
-                role: user.role
+                ID_Login: user.ID_Login,
+                role: user.role,
+                phone: user.phone,
+                is_supervisor_candidate: user.is_supervisor_candidate,
+                face_data: user.face_data,
+                jobdesk: user.jobdesk,
             }
         })
     } catch (error) {
@@ -89,19 +93,38 @@ exports.checkLogin = async (req, res) => {
         return res.status(401).json({
             success: false,
             message: "Anda Belum Login!!!"
-        })
+        });
     }
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).populate("jobdesk");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User tidak ditemukan!",
+            });
+        }
+
         return res.status(200).json({
             success: true,
-            user: decoded
-        })
+            user: {
+                id: user._id,
+                name: user.name,
+                slug: user.slug,
+                ID_Login: user.ID_Login,
+                role: user.role,
+                phone: user.phone,
+                is_supervisor_candidate: user.is_supervisor_candidate,
+                face_data: user.face_data,
+                jobdesk: user.jobdesk,
+            }
+        });
     } catch (error) {
         return res.status(401).json({
             success: false,
             message: "Token tidak valid!!!"
-        })
+        });
     }
-}
+};

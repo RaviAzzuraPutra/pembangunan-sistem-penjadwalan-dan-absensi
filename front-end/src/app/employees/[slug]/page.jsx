@@ -2,11 +2,13 @@
 import Link from "next/link"
 import Image from "next/image"
 import AuthCheck from "../../../utils/authCheck"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import axios from "axios"
 
 export default function Employees() {
     const router = useRouter()
+    const params = useParams();
+    const slug = params.slug;
     const handleLogout = async () => {
         try {
             const response = await axios.post("http://localhost:5001/auth/logout", {}, {
@@ -27,7 +29,7 @@ export default function Employees() {
                 <div className="relative w-full h-full border-1 bg-white shadow-lg">
                     <div className="relative h-[15%] w-full bg-gradient-to-b from-gray-200 to-gray-500">
                         <Link
-                            href='/employees/profile'
+                            href={`/employees/${slug}/profile`}
                             className="absolute top-4 right-4 h-12 w-12 rounded-full flex items-center justify-center bg-white 
                         shadow-lg border-2 border-purple-200 hover:bg-purple-50 transition-all duration-300 z-10"
                         >
