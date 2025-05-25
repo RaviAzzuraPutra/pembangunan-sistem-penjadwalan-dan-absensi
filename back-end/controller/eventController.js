@@ -5,42 +5,42 @@ const Unavailability = require("../models/Unavailability");
 const slugify = require("slugify");
 
 exports.createEvent = async (req, res) => {
-
     try {
         const slug = slugify(req.body.name, { lower: true, strict: true });
+
         const newEvent = new Event({
             ...req.body,
             slug,
         });
-        const saveedEvent = await newEvent.save();
 
+        const savedEvent = await newEvent.save();
+
+        // Prepare Unavailability ops
         const ops = [];
 
+        // Tambah Unavailability untuk user gudang
         newEvent.gudang.forEach(g => {
-            ops.push({
-                updateOne: {
-                    filter: { user_id: g.user_id, date: newEvent.date_prepare },
-                    update: { user_id: g.user_id, date: newEvent.date_prepare },
-                    upsert: true
-                }
-            });
-            ops.push({
-                updateOne: {
-                    filter: { user_id: g.user_id, date: newEvent.date_service },
-                    update: { user_id: g.user_id, date: newEvent.date_service },
-                    upsert: true
-                }
+            ['date_prepare', 'date_service'].forEach(field => {
+                const date = newEvent[field];
+                ops.push({
+                    updateOne: {
+                        filter: { user_id: g.user_id, date },
+                        update: { user_id: g.user_id, date },
+                        upsert: true,
+                    },
+                });
             });
         });
 
+        // Tambah Unavailability untuk user dapur (penanggung jawab)
         newEvent.dapur.forEach(d => {
             d.penanggung_jawab.forEach(pj => {
                 ops.push({
                     updateOne: {
                         filter: { user_id: pj.user_id, date: newEvent.date_service },
                         update: { user_id: pj.user_id, date: newEvent.date_service },
-                        upsert: true
-                    }
+                        upsert: true,
+                    },
                 });
             });
         });
@@ -50,29 +50,27 @@ exports.createEvent = async (req, res) => {
             console.log(`Inserted/updated ${ops.length} unavailability entries`);
         }
 
-
         res.status(200).json({
             message: "Berhasil membuat event!",
-            data: saveedEvent,
+            data: savedEvent,
             success: true,
         });
 
+        // Notifikasi WhatsApp
         (async () => {
             const userIdGudang = newEvent.gudang.map(item => item.user_id.toString());
-            const userIdDapur = [];
-            newEvent.dapur.forEach(menu => {
-                menu.penanggung_jawab.forEach(pj => {
-                    userIdDapur.push(pj.user_id.toString());
-                });
-            });
-
+            const userIdDapur = newEvent.dapur.flatMap(menu =>
+                menu.penanggung_jawab.map(pj => pj.user_id.toString())
+            );
             const allUserId = [...new Set([...userIdGudang, ...userIdDapur])];
+
             const users = await User.find({ _id: { $in: allUserId } });
 
             let batch = [];
             for (let i = 0; i < users.length; i++) {
                 batch.push(users[i]);
 
+                // Kirim batch setiap 10 user
                 if (batch.length === 10 || i === users.length - 1) {
                     for (const user of batch) {
                         const phoneFormatted = user.phone.replace(/^0/, "+62");
@@ -80,34 +78,38 @@ exports.createEvent = async (req, res) => {
                         try {
                             await sendMessage(phoneFormatted, message);
                         } catch (err) {
-                            console.error("Error mengirim pesan ke", user._id, err);
+                            console.error("Gagal kirim pesan ke", user._id, err);
                         }
                     }
                     batch = [];
 
+                    // Delay 2 menit di akhir batch (bukan setiap batch)
                     if (i === users.length - 1) {
-                        console.log("Menunggu 2 menit sebelum menyelesaikan notifikasi...");
+                        console.log("Delay 2 menit...");
                         await new Promise(resolve => setTimeout(resolve, 120000));
                     }
                 }
             }
         })().catch(err => {
-            console.error("Notification worker error:", err);
+            console.error("Error dalam notifikasi:", err);
         });
+
     } catch (error) {
+        console.error("Error saat membuat event:", error);
         return res.status(500).json({
             message: "Gagal membuat event!",
             error: error.message,
             success: false,
-        })
+        });
     }
-}
+};
+
 
 exports.getAllEvent = async (req, res) => {
 
     try {
         const events = await Event.find()
-            .populate("supervisor")
+            .populate('supervisor.id', 'name')
             .populate("gudang.user_id")
             .populate("gudang.jobdesk")
             .populate("dapur.penanggung_jawab.user_id");
@@ -130,7 +132,7 @@ exports.getEventById = async (req, res) => {
 
     try {
         const event = await Event.findById(req.params.id)
-            .populate("supervisor")
+            .populate('supervisor.id', 'name')
             .populate("gudang.user_id")
             .populate("gudang.jobdesk")
             .populate("dapur.penanggung_jawab.user_id")
@@ -157,47 +159,84 @@ exports.getEventById = async (req, res) => {
     }
 }
 
-exports.getEventBySlug = async (req, res) => {
 
-    try {
-        const event = await Event.findOne({ slug: req.params.slug })
-            .populate("supervisor")
-            .populate("gudang.user_id")
-            .populate("gudang.jobdesk")
-            .populate("dapur.penanggung_jawab.user_id");
-
-        if (!event) {
-            return res.status(404).json({
-                success: false,
-                message: "Event tidak ditemukan!",
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Berhasil mendapatkan event!",
-            data: event,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Gagal mendapatkan event!",
-            error: error.message,
-        });
-    }
-}
 
 exports.updateEvent = async (req, res) => {
     try {
         const { id } = req.params;
-        const updatedEvent = await Event.findByIdAndUpdate(id, req.body, { new: true });
 
-        if (!updatedEvent) {
+        // Ambil data event sebelum update
+        const oldEvent = await Event.findById(id);
+        if (!oldEvent) {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
+        }
+
+        // Update event
+        const updatedEvent = await Event.findByIdAndUpdate(id, req.body, { new: true });
+        if (!updatedEvent) {
+            return res.status(404).json({ message: 'Gagal update event' });
+        }
+
+        // Ambil user_id dari event lama
+        const oldUserIds = [];
+        if (Array.isArray(oldEvent.gudang)) {
+            oldEvent.gudang.forEach(g => {
+                if (g?.confirmation?.status !== 'tidak bisa') {
+                    oldUserIds.push(g.user_id.toString());
+                }
+            });
+        }
+        if (Array.isArray(oldEvent.dapur)) {
+            oldEvent.dapur.forEach(d => {
+                if (Array.isArray(d.penanggung_jawab)) {
+                    d.penanggung_jawab.forEach(pj => {
+                        if (pj?.confirmation?.status !== 'tidak bisa') {
+                            oldUserIds.push(pj.user_id.toString());
+                        }
+                    });
+                }
+            });
+        }
+
+        // Ambil user_id dari event baru
+        const newUserIds = [];
+        if (Array.isArray(updatedEvent.gudang)) {
+            updatedEvent.gudang.forEach(g => {
+                if (g?.confirmation?.status !== 'tidak bisa') {
+                    newUserIds.push(g.user_id.toString());
+                }
+            });
+        }
+        if (Array.isArray(updatedEvent.dapur)) {
+            updatedEvent.dapur.forEach(d => {
+                if (Array.isArray(d.penanggung_jawab)) {
+                    d.penanggung_jawab.forEach(pj => {
+                        if (pj?.confirmation?.status !== 'tidak bisa') {
+                            newUserIds.push(pj.user_id.toString());
+                        }
+                    });
+                }
+            });
+        }
+
+        // Hapus duplikat
+        const uniqueOldUserIds = [...new Set(oldUserIds)];
+        const uniqueNewUserIds = [...new Set(newUserIds)];
+
+        // Cari user_id baru yang perlu dikirimi pesan
+        const addedUserIds = uniqueNewUserIds.filter(id => !uniqueOldUserIds.includes(id));
+
+        for (const userId of addedUserIds) {
+            const user = await User.findById(userId);
+            if (!user || !user.phone) continue;
+
+            const phoneFormatted = user.phone.replace(/^0/, '+62');
+            await sendMessage(phoneFormatted, `Hai ${user.name}, kamu dijadwalkan pada event baru. Silakan konfirmasi kehadiranmu!`);
         }
 
         res.status(200).json({ message: 'Event berhasil diupdate', event: updatedEvent });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Gagal update event' });
     }
 };
@@ -205,26 +244,33 @@ exports.updateEvent = async (req, res) => {
 exports.deleteEvent = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedEvent = await Event.findByIdAndDelete(id)
+
+        // Ambil data event dulu dengan populate
+        const event = await Event.findById(id)
             .populate('gudang.user_id', 'nama no_telp')
             .populate('dapur.penanggung_jawab.user_id', 'nama no_telp');
 
-
-        if (!deletedEvent) {
+        if (!event) {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
         }
 
-        const tanggalPrepare = new Date(deletedEvent.tanggal_prepare);
-        const tanggalService = new Date(deletedEvent.tanggal_service);
+        // Normalisasi tanggal ke jam 00:00:00
+        const normalizeDate = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const tanggalPrepare = normalizeDate(new Date(event.date_prepare));
+        const tanggalService = normalizeDate(new Date(event.date_service));
 
-        // Kumpulkan semua user_id yang terlibat
+        // Kumpulkan semua user_id dari gudang dan dapur
         const userIds = new Set();
 
-        if (deletedEvent.gudang?.user_id?._id) {
-            userIds.add(deletedEvent.gudang.user_id._id.toString());
-        }
+        // dari gudang
+        event.gudang.forEach(g => {
+            if (g.user_id?._id) {
+                userIds.add(g.user_id._id.toString());
+            }
+        });
 
-        deletedEvent.dapur.forEach(menu => {
+        // dari dapur
+        event.dapur.forEach(menu => {
             menu.penanggung_jawab.forEach(pj => {
                 if (pj.user_id?._id) {
                     userIds.add(pj.user_id._id.toString());
@@ -232,24 +278,49 @@ exports.deleteEvent = async (req, res) => {
             });
         });
 
-        // Hapus semua Unavailability yang cocok
+        // Debug: tampilkan user dan tanggal yang mau dihapus
+        console.log('User IDs:', Array.from(userIds));
+        console.log('Tanggal Prepare:', tanggalPrepare);
+        console.log('Tanggal Service:', tanggalService);
+
+        // Hapus semua Unavailability yang cocok (gunakan rentang waktu harian)
         await Unavailability.deleteMany({
             user_id: { $in: Array.from(userIds) },
-            date: { $in: [tanggalPrepare, tanggalService] },
+            $or: [
+                {
+                    date: {
+                        $gte: tanggalPrepare,
+                        $lt: new Date(tanggalPrepare.getTime() + 86400000), // +1 hari
+                    },
+                },
+                {
+                    date: {
+                        $gte: tanggalService,
+                        $lt: new Date(tanggalService.getTime() + 86400000), // +1 hari
+                    },
+                },
+            ],
         });
 
+        // Hapus event
+        await event.deleteOne();
+
+        // Kirim notifikasi pembatalan
         const pesan = `*[Pembatalan Event]*\n` +
-            `Nama Acara: ${deletedEvent.nama_acara}\n` +
-            `Tanggal Prepare: ${new Date(deletedEvent.tanggal_prepare).toLocaleDateString('id-ID')}\n` +
-            `Tanggal Service: ${new Date(deletedEvent.tanggal_service).toLocaleDateString('id-ID')}\n` +
-            `Lokasi: ${deletedEvent.lokasi}\n\n` +
+            `Nama Acara: ${event.name}\n` +
+            `Tanggal Prepare: ${tanggalPrepare.toLocaleDateString('id-ID')}\n` +
+            `Tanggal Service: ${tanggalService.toLocaleDateString('id-ID')}\n` +
+            `Lokasi: ${event.location?.name || '-'}\n\n` +
             `Mohon perhatian, event ini telah dibatalkan.`;
 
-        if (deletedEvent.gudang?.user_id?.no_telp) {
-            sendMessage(deletedEvent.gudang.user_id.no_telp, pesan);
-        }
+        // Kirim ke semua user yang punya no_telp
+        event.gudang.forEach(g => {
+            if (g.user_id?.no_telp) {
+                sendMessage(g.user_id.no_telp, pesan);
+            }
+        });
 
-        deletedEvent.dapur.forEach(menu => {
+        event.dapur.forEach(menu => {
             menu.penanggung_jawab.forEach(pj => {
                 if (pj.user_id?.no_telp) {
                     sendMessage(pj.user_id.no_telp, pesan);
@@ -259,13 +330,15 @@ exports.deleteEvent = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Berhasil Menghapus Event"
-        })
+            message: "Berhasil Menghapus Event dan Unavailability"
+        });
+
     } catch (error) {
+        console.error("Error saat menghapus event:", error);
         return res.status(500).json({
             success: false,
             message: "Gagal Menghapus Event"
-        })
+        });
     }
 };
 
@@ -278,14 +351,26 @@ exports.getAssignedEvents = async (req, res) => {
             return res.status(404).json({ message: 'User tidak ditemukan' });
         }
 
+        console.log("User ditemukan:", user._id, user.slug);
+
         const events = await Event.find({
             $or: [
                 { 'gudang.user_id': user._id },
-                { 'dapur.penanggung_jawab.user_id': user._id }
+                { 'dapur.penanggung_jawab.user_id': user._id },
+                { 'supervisor.id': user._id },
+                { "jobdesk": user.jobdesk.map(j => j._id) }
             ]
+        }).populate({
+            path: 'gudang.user_id dapur.penanggung_jawab.user_id supervisor.id',
+            select: 'slug name'
         });
 
-        res.status(200).json(events);
+        console.log("Events ditemukan:", events.length);
+        res.status(200).json({
+            message: 'Berhasil mengambil assigned events',
+            data: events,
+            success: true
+        });
     } catch (error) {
         res.status(500).json({ message: 'Gagal mengambil assigned events' });
     }
@@ -293,9 +378,9 @@ exports.getAssignedEvents = async (req, res) => {
 
 exports.confirm = async (req, res) => {
     try {
-        const { eventId } = req.params;
+        const { id } = req.params;
         const { userId, status, kategori, menu } = req.body;
-        const event = await Event.findById(eventId);
+        const event = await Event.findById(id);
 
         if (!event) {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
@@ -307,29 +392,32 @@ exports.confirm = async (req, res) => {
             await Unavailability.create({ user_id: userId, date: tanggal });
             if (kategori === 'Gudang') {
                 event.gudang = event.gudang.filter(e => e.user_id.toString() !== userId);
-            } else {
+            } else if (kategori === 'Dapur') {
                 const idx = event.dapur.findIndex(d => d.menu === menu);
                 if (idx !== -1) {
                     event.dapur[idx].penanggung_jawab = event.dapur[idx].penanggung_jawab
                         .filter(pj => pj.user_id.toString() !== userId);
                 }
+            } else if (kategori === 'Supervisor') {
+                event.supervisor.confirmation = { status, timestamp: new Date() };
             }
         } else {
             if (kategori === 'Gudang') {
                 const emp = event.gudang.find(e => e.user_id.toString() === userId);
                 if (!emp) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
                 emp.confirmation = { status, timestamp: new Date() };
-            } else {
+            } else if (kategori === 'Dapur') {
                 const menuObj = event.dapur.find(d => d.menu === menu);
                 if (!menuObj) return res.status(404).json({ message: 'Menu dapur tidak ditemukan' });
                 const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
                 if (!pj) return res.status(404).json({ message: 'Penanggung jawab tidak ditemukan' });
                 pj.confirmation = { status, timestamp: new Date() };
+            } else if (kategori === 'Supervisor') {
+                event.supervisor.confirmation = { status, timestamp: new Date() };
             }
         }
-
         await event.save();
-        return res.status(200).json({ message: 'Konfirmasi kehadiran berhasil' });
+        return res.status(200).json({ message: 'Konfirmasi kehadiran berhasil', success: true });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Gagal konfirmasi kehadiran' });

@@ -34,17 +34,18 @@ export default function Events() {
             try {
                 const response = await axios.get("http://localhost:5001/event");
                 setEvents(response.data.data);
+                console.log("Data Event:", response.data.data);
             } catch (error) {
                 console.error("Terjadi Error Saat Mengambil Data Event:", error);
             }
         }
         fetchEvent();
-    },[]);
+    }, []);
 
     const deleteEvent = async (eventID) => {
         const response = await axios.get(`http://localhost:5001/event/${eventID}`);
         const event = response.data.data;
-         const confirm = await Swal.fire({
+        const confirm = await Swal.fire({
             title: `Hapus ${event.name}?`,
             text: "Tindakan ini tidak bisa dibatalkan.",
             icon: "warning",
@@ -55,20 +56,20 @@ export default function Events() {
 
         if (confirm.isConfirmed) {
             try {
-                 const res = await axios.delete(`http://localhost:5001/event/delete/${eventID}`);
-                 if (res.status === 200){
-                        Swal.fire("Berhasil!", `Event ${event.name} dihapus.`, "success");
-                        setEvents(events.filter(e => e._id !== eventID));
+                const res = await axios.delete(`http://localhost:5001/event/delete/${eventID}`);
+                if (res.status === 200) {
+                    Swal.fire("Berhasil!", `Event ${event.name} dihapus.`, "success");
+                    setEvents(events.filter(e => e._id !== eventID));
                 }
             } catch (error) {
-                 Swal.fire("Error", "Gagal menghapus event", "error");
+                Swal.fire("Error", "Gagal menghapus event", "error");
             }
-           
+
         }
     }
 
 
-  const columns = [
+    const columns = [
         {
             name: 'Nama Acara',
             selector: row => row.name,
@@ -81,17 +82,17 @@ export default function Events() {
         },
         {
             name: 'Prepare',
-             selector: row => new Date(row.date_prepare).toLocaleDateString('id-ID'),
+            selector: row => new Date(row.date_prepare).toLocaleDateString('id-ID'),
             wrap: true,
         },
         {
             name: 'Service',
-             selector: row => new Date(row.date_service).toLocaleDateString('id-ID'),
+            selector: row => new Date(row.date_service).toLocaleDateString('id-ID'),
             wrap: true,
         },
         {
             name: 'Supervisor',
-            selector: row => row.supervisor?.name || '-',
+            selector: row => row.supervisor?.id?.name || '-',
             wrap: true,
         },
         {
@@ -116,7 +117,7 @@ export default function Events() {
                     </button>
                     <button
                         className="bg-blue-500 text-white py-1 px-1 text-sm rounded hover:bg-blue-700"
-                        onClick={() => window.location.href = ``}
+                        onClick={() => window.location.href = `/admin/${slug}/events/updateEvent/${row._id}`}
                     >
                         Edit
                     </button>
@@ -136,52 +137,52 @@ export default function Events() {
     ];
 
     return (
-    <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Manajemen Penjadwalan</h1>
+        <div className="space-y-6">
+            <h1 className="text-3xl font-bold">Manajemen Penjadwalan</h1>
 
-        <div className="flex justify-between items-center">
-            <Link href={`/admin/${slug}/events/addEvent`}>
-                <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH ACARA</button>
-            </Link>
+            <div className="flex justify-between items-center">
+                <Link href={`/admin/${slug}/events/addEvent`}>
+                    <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH ACARA</button>
+                </Link>
+            </div>
+
+            <DataTable
+                columns={columns}
+                data={events}
+                pagination
+                paginationPerPage={5}
+                highlightOnHover
+                customStyles={{
+                    table: {
+                        style: {
+                            width: '100%',
+                        }
+                    },
+                    headCells: {
+                        style: {
+                            fontSize: '17px',
+                            fontWeight: 'bold',
+                            backgroundColor: '#f5f5f5',
+                            padding: '4px 6px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }
+                    },
+                    rows: {
+                        style: {
+                            fontSize: '15px',
+                            minHeight: '36px'
+                        }
+                    },
+                    cells: {
+                        style: {
+                            padding: '4px 6px',
+                            wordBreak: 'break-word',
+                        }
+                    }
+                }}
+            />
         </div>
-
-        <DataTable
-            columns={columns}
-            data={events}
-            pagination
-            paginationPerPage={5}
-            highlightOnHover
-            customStyles={{
-            table: {
-                style: {
-                width: '100%',
-                }
-            },
-            headCells: {
-                style: {
-                fontSize: '17px',
-                fontWeight: 'bold',
-                backgroundColor: '#f5f5f5',
-                padding: '4px 6px', 
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                }
-            },
-            rows: {
-                style: {
-                fontSize: '15px',
-                 minHeight: '36px'
-                }
-            },
-            cells: {
-                style: {
-                 padding: '4px 6px', 
-                wordBreak: 'break-word',
-                }
-            }
-            }}
-        />
-    </div>
-);
+    );
 }

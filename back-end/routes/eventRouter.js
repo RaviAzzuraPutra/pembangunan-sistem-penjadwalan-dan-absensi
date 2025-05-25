@@ -10,14 +10,12 @@ router.get('/available-employees', eventController.getAvailableEmployees);
 
 router.get('/:id', eventController.getEventById);
 
-router.get('/:slug', eventController.getEventBySlug);
-
 router.put('/update/:id', eventController.updateEvent);
 
 router.delete('/delete/:id', eventController.deleteEvent);
 
 router.get('/assigned/:slug', eventController.getAssignedEvents);
 
-router.patch('/confirm/:id', eventController.confirm);
+router.put('/confirm/:id', eventController.confirm);
 
 module.exports = router;

@@ -10,7 +10,13 @@ const EventSchema = new mongoose.Schema({
     date_service: Date,
     time_start_service: String,
     time_end_service: String,
-    supervisor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    supervisor: {
+        id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        confirmation: {
+            status: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' },
+            timestamp: Date
+        }
+    },
     location: {
         name: String,
         address: mongoose.Schema.Types.Mixed,

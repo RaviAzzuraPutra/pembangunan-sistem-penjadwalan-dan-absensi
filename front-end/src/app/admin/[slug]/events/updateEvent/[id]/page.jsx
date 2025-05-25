@@ -35,7 +35,7 @@ function MapClickHandler({ isDrawing, addPoint, isReverseGeocoding, handleRevers
 
 
 
-export default function AddEvent() {
+export default function UpdateEvent() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedLocation, setSelectedLocation] = useState(null)
     const [polygon, setPolygon] = useState([])
@@ -54,12 +54,12 @@ export default function AddEvent() {
     const [serviceEndTime, setServiceEndTime] = useState('')
     const [selectedGudang, setSelectedGudang] = useState([]);
     const [locationAddress, setLocationAddress] = useState(null)
-    const [searchGudang, setSearchGudang] = useState('')
     const mapRef = useRef(null)
 
     const params = useParams();
     const slug = params.slug;
     const router = useRouter();
+    const id = params.id;
 
     useEffect(() => {
         const map = mapRef.current
@@ -167,6 +167,8 @@ export default function AddEvent() {
         setSelectedSupervisor(e.target.value);
     }
 
+    const selectedSupervisorId = karyawanData.find(emp => emp.name === selectedSupervisor)?._id;
+
     const handleAddMenu = () => {
         setDapurList(prev => [...prev, { menu: '', stan: '', jumlah_porsi: '', penanggung_jawab: [] }])
     }
@@ -191,10 +193,6 @@ export default function AddEvent() {
             closedPolygon.push(first)
         }
     }
-
-
-
-    const selectedSupervisorId = karyawanData.find(emp => emp.name === selectedSupervisor)?._id;
 
 
     const handleSubmit = async (e) => {
@@ -230,7 +228,6 @@ export default function AddEvent() {
                 }).filter(Boolean)
             }))
 
-
             const body = {
                 name: namaAcara,
                 porsi: Number(porsi),
@@ -240,18 +237,16 @@ export default function AddEvent() {
                 date_service: serviceDate,
                 time_start_service: serviceStartTime,
                 time_end_service: serviceEndTime,
-                supervisor: {
-                    id: selectedSupervisorId
-                },
+                supervisor: selectedSupervisorId,
                 location: locationPayload,
                 gudang: gudangPayload,
                 dapur: dapurPayload
             }
 
-            const response = await axios.post(
-                'http://localhost:5001/event/create',
+            const response = await axios.put(
+                `http://localhost:5001/event/${id}`,
                 body
-            )
+            );
 
             console.log('RESPONSE:', response.status, response.data);
             const successStatus = response.data.success ? 'true' : 'false';
@@ -263,7 +258,65 @@ export default function AddEvent() {
         }
     }
 
+    useEffect(() => {
+        const fetchEventDetail = async () => {
+            try {
+                const res = await axios.get(`http://localhost:5001/event/${id}`);
+                if (res.data.success) {
+                    const data = res.data.data;
 
+                    // Isi semua state dari data event
+                    setNamaAcara(data.name || '');
+                    setPorsi(data.porsi || '');
+                    setPrepareDate(data.date_prepare?.slice(0, 10) || '');
+                    setServiceDate(data.date_service?.slice(0, 10) || '');
+                    setPrepareStartTime(data.time_start_prepare || '');
+                    setPrepareEndTime(data.time_end_prepare || '');
+                    setServiceStartTime(data.time_start_service || '');
+                    setServiceEndTime(data.time_end_service || '');
+                    setSelectedSupervisor(data.supervisor?.name || '');
+
+                    // Lokasi
+                    if (data.location) {
+                        setSearchQuery(data.location.name || '');
+                        setLocationAddress(data.location.address || '');
+                        setSelectedLocation({
+                            lat: data.location.latitude,
+                            lng: data.location.longitude
+                        });
+                        if (Array.isArray(data.location.polygon)) {
+                            const poly = data.location.polygon.map(([lng, lat]) => ({ lat, lng }));
+                            setPolygon(poly);
+                        }
+                    }
+
+                    // Gudang
+                    if (Array.isArray(data.gudang)) {
+                        const gudangList = data.gudang.map(g => ({
+                            userId: g.user_id?._id,
+                            jobdesk: g.jobdesk[0]?.name
+                        }));
+                        setSelectedGudang(gudangList);
+                    }
+
+                    // Dapur
+                    if (Array.isArray(data.dapur)) {
+                        const dapurMenus = data.dapur.map(menu => ({
+                            menu: menu.menu,
+                            stan: menu.stan,
+                            jumlah_porsi: menu.jumlah_porsi,
+                            penanggung_jawab: menu.penanggung_jawab.map(pj => pj.user_id?.name)
+                        }));
+                        setDapurList(dapurMenus);
+                    }
+                }
+            } catch (error) {
+                console.error("Gagal mengambil data event:", error);
+            }
+        };
+
+        if (id) fetchEventDetail();
+    }, [id]);
 
     const jdList = Array.from(new Set(
         karyawanData.flatMap(emp =>
@@ -272,12 +325,6 @@ export default function AddEvent() {
                 .map(jd => jd.name)
         )
     ));
-
-    const filteredGudangData = karyawanData.filter(emp =>
-        emp.jobdesk.some(jd => jd.category === 'gudang') &&
-        emp._id !== selectedSupervisorId &&
-        emp.name.toLowerCase().includes(searchGudang.toLowerCase())
-    );
 
     return (
         <form onSubmit={handleSubmit}>
@@ -329,50 +376,37 @@ export default function AddEvent() {
                 {/* Gudang */}
                 <div>
                     <h2 className="text-xl font-semibold mb-2">Pilih Karyawan Gudang</h2>
-                    {/* Search field */}
-                    <input
-                        type="text"
-                        placeholder="Cari karyawan gudang..."
-                        className="w-full border px-3 py-2 rounded mb-4"
-                        value={searchGudang}
-                        onChange={e => setSearchGudang(e.target.value)}
-                    />
-
-                    {/* Scrollable, multi-column list */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto border p-3 rounded">
+                    <div className="space-y-4">
                         {jdList.map(jdName => (
-                            <div key={jdName}>
+                            <div key={jdName} className="mb-3">
                                 <span className="block font-semibold mb-1">{jdName}</span>
-                                <div className="space-y-1 ml-2">
-                                    {filteredGudangData
+                                <div className="space-y-2 ml-4">
+                                    {karyawanData
                                         .filter(emp =>
-                                            emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang')
+                                            emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang') &&
+                                            emp._id !== selectedSupervisorId
                                         )
                                         .map(emp => {
                                             const isChecked = selectedGudang.some(item =>
                                                 item.userId === emp._id && item.jobdesk === jdName
                                             );
                                             return (
-                                                <label
-                                                    key={emp._id + jdName}
-                                                    className="flex items-center gap-2"
-                                                >
+                                                <label key={emp._id + jdName} className="flex items-center gap-2">
                                                     <input
                                                         type="checkbox"
                                                         className="h-4 w-4 border-2 border-black"
                                                         checked={isChecked}
                                                         onChange={() => handleGudangToggle(emp._id, jdName)}
                                                     />
-                                                    <span className="truncate">{emp.name}</span>
+                                                    {emp.name}
                                                 </label>
-                                            )
+                                            );
                                         })}
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
-
 
                 {/* Dapur */}
                 <div>

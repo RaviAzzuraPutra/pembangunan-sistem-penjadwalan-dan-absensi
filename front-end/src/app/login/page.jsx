@@ -80,7 +80,7 @@ export default function LoginPage() {
                             <div className="flex items-center justify-between pt-2 mb-4 mt-4">
                                 <div className="text-sm m">
                                     <div className="text-gray-700">LUPA PASSWORD?</div>
-                                    <Link href="#" className="text-gray-700 hover:underline hover:text-gray-950">
+                                    <Link href="/forgot-password" className="text-gray-700 hover:underline hover:text-gray-950">
                                         <p>Silahkan Reset Password</p>
                                     </Link>
                                 </div>
