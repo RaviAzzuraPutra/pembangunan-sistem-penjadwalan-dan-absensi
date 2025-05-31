@@ -35,7 +35,7 @@ function MapClickHandler({ isDrawing, addPoint, isReverseGeocoding, handleRevers
 
 
 
-export default function UpdateEvent() {
+export default function AddEvent() {
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedLocation, setSelectedLocation] = useState(null)
     const [polygon, setPolygon] = useState([])
@@ -54,12 +54,12 @@ export default function UpdateEvent() {
     const [serviceEndTime, setServiceEndTime] = useState('')
     const [selectedGudang, setSelectedGudang] = useState([]);
     const [locationAddress, setLocationAddress] = useState(null)
+    const [searchGudang, setSearchGudang] = useState('')
     const mapRef = useRef(null)
 
     const params = useParams();
     const slug = params.slug;
     const router = useRouter();
-    const id = params.id;
 
     useEffect(() => {
         const map = mapRef.current
@@ -167,8 +167,6 @@ export default function UpdateEvent() {
         setSelectedSupervisor(e.target.value);
     }
 
-    const selectedSupervisorId = karyawanData.find(emp => emp.name === selectedSupervisor)?._id;
-
     const handleAddMenu = () => {
         setDapurList(prev => [...prev, { menu: '', stan: '', jumlah_porsi: '', penanggung_jawab: [] }])
     }
@@ -195,6 +193,10 @@ export default function UpdateEvent() {
     }
 
 
+
+    const selectedSupervisorId = karyawanData.find(emp => emp.name === selectedSupervisor)?._id;
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -218,15 +220,20 @@ export default function UpdateEvent() {
 
             const dapurPayload = dapurList.map(menu => ({
                 menu: menu.menu,
-                stan: menu.stan,
                 jumlah_porsi: Number(menu.jumlah_porsi),
                 penanggung_jawab: menu.penanggung_jawab.map(name => {
-                    const emp = karyawanData.find(e => e.name === name)
-                    return emp
-                        ? { user_id: emp._id, name: emp.name }
-                        : null
-                }).filter(Boolean)
-            }))
+                    const emp = karyawanData.find(e => e.name === name);
+                    return emp ? {
+                        user_id: emp._id,
+                        confirmation: {
+                            status: 'menunggu',
+                            timestamp: null
+                        }
+                    } : null;
+                }).filter(Boolean),
+                tahap: 'service'
+            }));
+
 
             const body = {
                 name: namaAcara,
@@ -237,86 +244,30 @@ export default function UpdateEvent() {
                 date_service: serviceDate,
                 time_start_service: serviceStartTime,
                 time_end_service: serviceEndTime,
-                supervisor: selectedSupervisorId,
+                supervisor: {
+                    id: selectedSupervisorId
+                },
                 location: locationPayload,
                 gudang: gudangPayload,
                 dapur: dapurPayload
             }
 
-            const response = await axios.put(
-                `http://localhost:5001/event/${id}`,
+            const response = await axios.post(
+                'http://localhost:5001/event/create',
                 body
-            );
+            )
 
             console.log('RESPONSE:', response.status, response.data);
             const successStatus = response.data.success ? 'true' : 'false';
-            router.push(`/admin/${slug}/events?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
+            router.push(`/direktur/${slug}/events?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
             console.error("DETAIL ERROR SUBMIT EVENT:", error); // Tambahkan ini
             const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Event";
-            router.push(`/admin/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
+            router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
     }
 
-    useEffect(() => {
-        const fetchEventDetail = async () => {
-            try {
-                const res = await axios.get(`http://localhost:5001/event/${id}`);
-                if (res.data.success) {
-                    const data = res.data.data;
 
-                    // Isi semua state dari data event
-                    setNamaAcara(data.name || '');
-                    setPorsi(data.porsi || '');
-                    setPrepareDate(data.date_prepare?.slice(0, 10) || '');
-                    setServiceDate(data.date_service?.slice(0, 10) || '');
-                    setPrepareStartTime(data.time_start_prepare || '');
-                    setPrepareEndTime(data.time_end_prepare || '');
-                    setServiceStartTime(data.time_start_service || '');
-                    setServiceEndTime(data.time_end_service || '');
-                    setSelectedSupervisor(data.supervisor?.name || '');
-
-                    // Lokasi
-                    if (data.location) {
-                        setSearchQuery(data.location.name || '');
-                        setLocationAddress(data.location.address || '');
-                        setSelectedLocation({
-                            lat: data.location.latitude,
-                            lng: data.location.longitude
-                        });
-                        if (Array.isArray(data.location.polygon)) {
-                            const poly = data.location.polygon.map(([lng, lat]) => ({ lat, lng }));
-                            setPolygon(poly);
-                        }
-                    }
-
-                    // Gudang
-                    if (Array.isArray(data.gudang)) {
-                        const gudangList = data.gudang.map(g => ({
-                            userId: g.user_id?._id,
-                            jobdesk: g.jobdesk[0]?.name
-                        }));
-                        setSelectedGudang(gudangList);
-                    }
-
-                    // Dapur
-                    if (Array.isArray(data.dapur)) {
-                        const dapurMenus = data.dapur.map(menu => ({
-                            menu: menu.menu,
-                            stan: menu.stan,
-                            jumlah_porsi: menu.jumlah_porsi,
-                            penanggung_jawab: menu.penanggung_jawab.map(pj => pj.user_id?.name)
-                        }));
-                        setDapurList(dapurMenus);
-                    }
-                }
-            } catch (error) {
-                console.error("Gagal mengambil data event:", error);
-            }
-        };
-
-        if (id) fetchEventDetail();
-    }, [id]);
 
     const jdList = Array.from(new Set(
         karyawanData.flatMap(emp =>
@@ -325,6 +276,12 @@ export default function UpdateEvent() {
                 .map(jd => jd.name)
         )
     ));
+
+    const filteredGudangData = karyawanData.filter(emp =>
+        emp.jobdesk.some(jd => jd.category === 'gudang') &&
+        emp._id !== selectedSupervisorId &&
+        emp.name.toLowerCase().includes(searchGudang.toLowerCase())
+    );
 
     return (
         <form onSubmit={handleSubmit}>
@@ -376,37 +333,50 @@ export default function UpdateEvent() {
                 {/* Gudang */}
                 <div>
                     <h2 className="text-xl font-semibold mb-2">Pilih Karyawan Gudang</h2>
-                    <div className="space-y-4">
+                    {/* Search field */}
+                    <input
+                        type="text"
+                        placeholder="Cari karyawan gudang..."
+                        className="w-full border px-3 py-2 rounded mb-4"
+                        value={searchGudang}
+                        onChange={e => setSearchGudang(e.target.value)}
+                    />
+
+                    {/* Scrollable, multi-column list */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto border p-3 rounded">
                         {jdList.map(jdName => (
-                            <div key={jdName} className="mb-3">
+                            <div key={jdName}>
                                 <span className="block font-semibold mb-1">{jdName}</span>
-                                <div className="space-y-2 ml-4">
-                                    {karyawanData
+                                <div className="space-y-1 ml-2">
+                                    {filteredGudangData
                                         .filter(emp =>
-                                            emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang') &&
-                                            emp._id !== selectedSupervisorId
+                                            emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang')
                                         )
                                         .map(emp => {
                                             const isChecked = selectedGudang.some(item =>
                                                 item.userId === emp._id && item.jobdesk === jdName
                                             );
                                             return (
-                                                <label key={emp._id + jdName} className="flex items-center gap-2">
+                                                <label
+                                                    key={emp._id + jdName}
+                                                    className="flex items-center gap-2"
+                                                >
                                                     <input
                                                         type="checkbox"
                                                         className="h-4 w-4 border-2 border-black"
                                                         checked={isChecked}
                                                         onChange={() => handleGudangToggle(emp._id, jdName)}
                                                     />
-                                                    {emp.name}
+                                                    <span className="truncate">{emp.name}</span>
                                                 </label>
-                                            );
+                                            )
                                         })}
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
+
 
                 {/* Dapur */}
                 <div>
@@ -422,15 +392,6 @@ export default function UpdateEvent() {
                                         className="w-full border px-3 py-2 rounded"
                                         value={menu.menu}
                                         onChange={(e) => handleChangeMenu(index, 'menu', e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium">Stan</label>
-                                    <input
-                                        type="text"
-                                        className="w-full border px-3 py-2 rounded"
-                                        value={menu.stan}
-                                        onChange={(e) => handleChangeMenu(index, 'stan', e.target.value)}
                                     />
                                 </div>
                                 <div>
@@ -505,7 +466,7 @@ export default function UpdateEvent() {
                 </MapContainer>
                 <div className="flex justify-end gap-3">
                     <button type='submit' className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
-                    <Link href={`/admin/${slug}/events`}>
+                    <Link href={`/direktur/${slug}/events`}>
                         <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                     </Link>
                 </div>

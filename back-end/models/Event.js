@@ -38,11 +38,9 @@ const EventSchema = new mongoose.Schema({
     }],
     dapur: [{
         menu: String,
-        stan: String,
         jumlah_porsi: Number,
         penanggung_jawab: [{
             user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-            name: String,
             confirmation: {
                 status: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' },
                 timestamp: Date

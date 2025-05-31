@@ -17,8 +17,8 @@ export default function AuthCheck() {
 
                 const { user } = response.data;
                 if (user) {
-                    if (user.role === "admin" && !pathname.includes("/admin")) {
-                        router.replace(`/admin/${user.slug}`);
+                    if (user.role === "direktur" && !pathname.includes("/direktur")) {
+                        router.replace(`/direktur/${user.slug}`);
                     } else if (user.role === "karyawan" && !pathname.includes("/employees")) {
                         router.replace(`/employees/${user.slug}`);
                     }

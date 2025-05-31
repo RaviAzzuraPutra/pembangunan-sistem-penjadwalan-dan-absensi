@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     ID_Login: { type: String, unique: true },
     password: String,
     phone: String,
-    role: { type: String, enum: ['admin', 'karyawan'], default: 'karyawan' },
+    role: { type: String, enum: ['direktur', 'karyawan'], default: 'karyawan' },
     is_supervisor_candidate: { type: Boolean, default: false },
     jobdesk: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Jobdesk' }],
     face_data: String,

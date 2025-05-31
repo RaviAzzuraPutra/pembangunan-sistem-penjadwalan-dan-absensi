@@ -175,7 +175,7 @@ export default function Employees() {
                                         <p><span className="font-medium">Tanggal Service:</span> {new Date(event.date_service).toLocaleDateString()}</p>
 
                                         {confirmationStatus === "bisa" ? (
-                                            <Link href={`/employees/info?id=${event._id}`}>
+                                            <Link href={`/employees/${slug}/info/${event._id}`}>
                                                 <button className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-700 mt-3">
                                                     INFO
                                                 </button>

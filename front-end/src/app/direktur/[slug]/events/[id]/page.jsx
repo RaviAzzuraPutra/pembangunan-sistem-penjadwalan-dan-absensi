@@ -129,14 +129,13 @@ export default function detailEvent() {
                     {detailEvent.dapur?.map((d, i) => (
                         <div className='mb-5 border-b pb-2' key={i}>
                             <p><strong>Menu :</strong>{d.menu}</p>
-                            <p><strong>Stan :</strong>{d.stan}</p>
                             <p><strong>Jumlah Porsi :</strong>{d.jumlah_porsi}</p>
                             <p><strong>Tahap :</strong>{d.tahap}</p>
                             <div className='ml-4 mt-2'>
                                 <p className='font-semibold'>Penanggung Jawab</p>
                                 {d.penanggung_jawab.map((pj, index) => (
                                     <p key={index} className='text-sm'>
-                                        {pj.name} ({pj.confirmation.status}, {pj.confirmation.timestamp && new Date(pj.confirmation.timestamp).toLocaleString()})
+                                        {pj.user_id?.name} ({pj.confirmation.status}, {pj.confirmation.timestamp && new Date(pj.confirmation.timestamp).toLocaleString()})
                                     </p>
                                 ))}
                             </div>
@@ -163,7 +162,7 @@ export default function detailEvent() {
                     </div>
                 </div>
                 <div className="flex justify-end gap-3">
-                    <Link href={`/admin/${slug}/events`}>
+                    <Link href={`/direktur/${slug}/events`}>
                         <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                     </Link>
                 </div>

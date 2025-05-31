@@ -27,7 +27,8 @@ const detectFace = async (imageBuffer) => {
     const detections = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })).withFaceLandmarks().withFaceDescriptor();
 
     if (!detections) {
-        throw new Error("Tidak ada wajah yang terdeteksi!!!");
+        // Tidak melempar error agar controller bisa menanganinya secara halus
+        return null;
     }
 
     return detections.descriptor;

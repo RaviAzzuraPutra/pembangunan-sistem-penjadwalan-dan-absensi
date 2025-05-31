@@ -12,3 +12,5 @@ const AttendanceSchema = new mongoose.Schema({
     tahap: { type: String, enum: ['service', 'prepare'] },
     status: { type: String, enum: ['berhasil', 'gagal'] },
 }, { timestamps: true });
+
+module.exports = mongoose.model('Attendance', AttendanceSchema);

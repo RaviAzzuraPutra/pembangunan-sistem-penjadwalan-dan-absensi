@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import axios from "axios"
 
-export default function AttendancePrepare() {
+export default function ChangeFace() {
     const videoRef = useRef(null)
     const [cameraActive, setCameraActive] = useState(false)
     const params = useParams();

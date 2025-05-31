@@ -76,7 +76,7 @@ export default function Users() {
                     </button>
                     <button
                         className="bg-blue-500 text-white py-2 px-2 text-sm rounded hover:bg-blue-700"
-                        onClick={() => window.location.href = `/admin/${slug}/users/updateUser/${row._id}`}
+                        onClick={() => window.location.href = `/direktur/${slug}/users/updateUser/${row._id}`}
                     >
                         Edit
                     </button>
@@ -152,7 +152,7 @@ export default function Users() {
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Manajemen Pengguna</h1>
             <div className="flex justify-between items-center">
-                <Link href={`/admin/${slug}/users/addUser`}>
+                <Link href={`/direktur/${slug}/users/addUser`}>
                     <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH PENGGUNA</button>
                 </Link>
                 <input

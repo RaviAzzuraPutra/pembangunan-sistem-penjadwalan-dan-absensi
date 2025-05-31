@@ -33,7 +33,12 @@ export default function Events() {
         const fetchEvent = async () => {
             try {
                 const response = await axios.get("http://localhost:5001/event");
-                setEvents(response.data.data);
+                const sorted = response.data.data.sort((a, b) => {
+                    const dateA = new Date(a.date_prepare || a.date_service);
+                    const dateB = new Date(b.date_prepare || b.date_service);
+                    return dateA - dateB;
+                });
+                setEvents(sorted);
                 console.log("Data Event:", response.data.data);
             } catch (error) {
                 console.error("Terjadi Error Saat Mengambil Data Event:", error);
@@ -111,13 +116,13 @@ export default function Events() {
                 <div className="flex gap-2 justify-between">
                     <button
                         className="bg-green-500 text-white py-1 px-1 text-sm rounded hover:bg-green-700"
-                        onClick={() => window.location.href = `/admin/${slug}/events/${row._id}`}
+                        onClick={() => window.location.href = `/direktur/${slug}/events/${row._id}`}
                     >
                         Info
                     </button>
                     <button
                         className="bg-blue-500 text-white py-1 px-1 text-sm rounded hover:bg-blue-700"
-                        onClick={() => window.location.href = `/admin/${slug}/events/updateEvent/${row._id}`}
+                        onClick={() => window.location.href = `/direktur/${slug}/events/updateEvent/${row._id}`}
                     >
                         Edit
                     </button>
@@ -141,7 +146,7 @@ export default function Events() {
             <h1 className="text-3xl font-bold">Manajemen Penjadwalan</h1>
 
             <div className="flex justify-between items-center">
-                <Link href={`/admin/${slug}/events/addEvent`}>
+                <Link href={`/direktur/${slug}/events/addEvent`}>
                     <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH ACARA</button>
                 </Link>
             </div>

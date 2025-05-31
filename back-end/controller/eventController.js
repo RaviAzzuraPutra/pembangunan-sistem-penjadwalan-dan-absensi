@@ -3,6 +3,8 @@ const User = require("../models/User");
 const sendMessage = require("../utils/send-message");
 const Unavailability = require("../models/Unavailability");
 const slugify = require("slugify");
+const Attendance = require("../models/Attendance");
+
 
 exports.createEvent = async (req, res) => {
     try {
@@ -135,7 +137,7 @@ exports.getEventById = async (req, res) => {
             .populate('supervisor.id', 'name')
             .populate("gudang.user_id")
             .populate("gudang.jobdesk")
-            .populate("dapur.penanggung_jawab.user_id")
+            .populate("dapur.penanggung_jawab.user_id", 'name')
             .populate("gudang.jobdesk");
 
         if (!event) {
@@ -302,6 +304,8 @@ exports.deleteEvent = async (req, res) => {
             ],
         });
 
+        await Attendance.deleteMany({ event_id: id });
+
         // Hapus event
         await event.deleteOne();
 
@@ -441,39 +445,47 @@ exports.getAvailableEmployees = async (req, res) => {
             .populate('dapur.penanggung_jawab.user_id', 'name');
 
         events.forEach(ev => {
-            if (date_prepare && ev.date_prepare.toISOString().slice(0, 10) === new Date(date_prepare).toISOString().slice(0, 10)) {
-                if (ev.supervisor) blocked.add(ev.supervisor._id.toString());
+            if (date_prepare && ev.date_prepare?.toISOString().slice(0, 10) === new Date(date_prepare).toISOString().slice(0, 10)) {
+                if (ev.supervisor?._id) blocked.add(ev.supervisor._id.toString());
 
-                ev.gudang.forEach(g => {
-                    if (g.tahap.includes('prepare')) {
+                ev.gudang?.forEach(g => {
+                    if (g.tahap?.includes('prepare') && g.user_id?._id) {
                         blocked.add(g.user_id._id.toString());
                     }
                 });
             }
 
-            if (date_service && ev.date_service.toISOString().slice(0, 10) === new Date(date_service).toISOString().slice(0, 10)) {
-                if (ev.supervisor) blocked.add(ev.supervisor._id.toString());
+            if (date_service && ev.date_service?.toISOString().slice(0, 10) === new Date(date_service).toISOString().slice(0, 10)) {
+                if (ev.supervisor?._id) blocked.add(ev.supervisor._id.toString());
 
-                ev.gudang.forEach(g => {
-                    if (g.tahap.includes('service')) {
+                ev.gudang?.forEach(g => {
+                    if (g.tahap?.includes('service') && g.user_id?._id) {
                         blocked.add(g.user_id._id.toString());
                     }
                 });
 
-                ev.dapur.forEach(d => {
-                    d.penanggung_jawab.forEach(pj => {
-                        blocked.add(pj.user_id._id.toString());
+                ev.dapur?.forEach(d => {
+                    d.penanggung_jawab?.forEach(pj => {
+                        if (pj.user_id?._id) {
+                            blocked.add(pj.user_id._id.toString());
+                        }
                     });
                 });
             }
         });
+
 
         const datesToCheck = [];
         if (date_prepare) datesToCheck.push(new Date(date_prepare));
         if (date_service) datesToCheck.push(new Date(date_service));
 
         const noGo = await Unavailability.find({ date: { $in: datesToCheck } });
-        noGo.forEach(u => blocked.add(u.user_id.toString()));
+        noGo.forEach(u => {
+            if (u.user_id) {
+                blocked.add(u.user_id.toString());
+            }
+        });
+
 
         const available = await User.find({
             _id: { $nin: Array.from(blocked) },
@@ -484,5 +496,104 @@ exports.getAvailableEmployees = async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+
+exports.getEventInfoForEmployee = async (req, res) => {
+    const { slug, id } = req.params;
+
+    try {
+        const event = await Event.findById(id)
+            .populate('supervisor.id', 'name slug')
+            .populate('gudang.user_id', 'name slug')
+            .populate('gudang.jobdesk')
+            .populate('dapur.penanggung_jawab.user_id', 'name slug');
+
+        if (!event) return res.status(404).json({ message: 'Event not found' });
+
+        const user = await User.findOne({ slug });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Identify role
+        let role = null;
+        let jobdeskNames = [];
+
+        if (event.supervisor.id && event.supervisor.id.slug === slug) {
+            role = 'supervisor';
+        } else {
+            const gudangEntry = event.gudang.find(g => g.user_id?.slug === slug);
+            if (gudangEntry) {
+                role = 'gudang';
+                jobdeskNames = gudangEntry.jobdesk.map(j => ({
+                    name: j.name,
+                    description: j.description
+                }));
+            } else {
+                for (const d of event.dapur) {
+                    const pj = d.penanggung_jawab.find(pj => pj.user_id?.slug === slug);
+                    if (pj) {
+                        role = 'dapur';
+                        jobdeskNames = [{
+                            name: d.menu,
+                            description: `Stan: ${d.stan}, Porsi: ${d.jumlah_porsi}, Penanggung Jawab: ${pj.user_id.name}`
+                        }];
+                        break;
+                    }
+                }
+            }
+        }
+
+        const prepareAttendance = await Attendance.findOne({ event_id: id, user_id: user._id, tahap: 'prepare' });
+        const serviceAttendance = await Attendance.findOne({ event_id: id, user_id: user._id, tahap: 'service' });
+
+
+        // Get all names
+        const participantData = [];
+
+        // Supervisor
+        if (event.supervisor?.id) {
+            participantData.push({ name: event.supervisor.id.name, jobdesk: 'Supervisor' });
+        }
+
+        // Gudang
+        for (const g of event.gudang) {
+            if (g.user_id) {
+                const jobdeskNames = g.jobdesk.map(j => j.name).join(', ');
+                participantData.push({ name: g.user_id.name, jobdesk: jobdeskNames || '-' });
+            }
+        }
+
+        // Dapur
+        for (const d of event.dapur) {
+            for (const pj of d.penanggung_jawab) {
+                if (pj.user_id) {
+                    participantData.push({ name: pj.user_id.name, jobdesk: `PJ Menu: ${d.menu}` });
+                }
+            }
+        }
+
+        res.status(200).json({
+            event: {
+                name: event.name,
+                date_prepare: event.date_prepare,
+                time_start_prepare: event.time_start_prepare,
+                time_end_prepare: event.time_end_prepare,
+                date_service: event.date_service,
+                time_start_service: event.time_start_service,
+                time_end_service: event.time_end_service,
+                location: event.location,
+                status: event.status,
+            },
+            jobdesk: jobdeskNames,
+            role,
+            participants: participantData,
+            attendanceStatus: {
+                prepare: prepareAttendance,
+                service: serviceAttendance
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
     }
 };

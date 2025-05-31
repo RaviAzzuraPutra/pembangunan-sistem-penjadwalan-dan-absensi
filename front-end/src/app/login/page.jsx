@@ -26,8 +26,8 @@ export default function LoginPage() {
 
             const { success, user } = response.data;
             if (success) {
-                if (user.role === "admin") {
-                    router.replace(`/admin/${user.slug}`);
+                if (user.role === "direktur") {
+                    router.replace(`/direktur/${user.slug}`);
                 } else if (user.role === "karyawan") {
                     router.replace(`/employees/${user.slug}`);
                 }

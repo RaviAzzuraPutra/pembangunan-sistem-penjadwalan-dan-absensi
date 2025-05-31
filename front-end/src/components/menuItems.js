@@ -2,27 +2,27 @@
 const getMenuItems = (slug) => [
     {
         title: "Dashboard",
-        path: `/admin/${slug}`,
+        path: `/direktur/${slug}`,
         icon: "/icons/home.png",
     },
     {
         title: "Pengguna",
-        path: `/admin/${slug}/users`,
+        path: `/direktur/${slug}/users`,
         icon: "/icons/user.png"
     },
     {
         title: "Acara",
-        path: `/admin/${slug}/events`,
+        path: `/direktur/${slug}/events`,
         icon: "/icons/calendar.png"
     },
     {
         title: "Data Absensi",
-        path: `/admin/${slug}/attendance-data`,
+        path: `/direktur/${slug}/attendance-data`,
         icon: "/icons/immigration.png"
     },
     {
         title: "WhatsApp",
-        path: `/admin/${slug}/whatsapp`,
+        path: `/direktur/${slug}/whatsapp`,
         icon: "/icons/whatsapp.png"
     }
 ];

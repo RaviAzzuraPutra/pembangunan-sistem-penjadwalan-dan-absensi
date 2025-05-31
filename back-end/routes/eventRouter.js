@@ -18,4 +18,6 @@ router.get('/assigned/:slug', eventController.getAssignedEvents);
 
 router.put('/confirm/:id', eventController.confirm);
 
+router.get('/eventInfo/:slug/info/:id', eventController.getEventInfoForEmployee);
+
 module.exports = router;

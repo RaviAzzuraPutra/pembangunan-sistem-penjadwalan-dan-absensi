@@ -60,10 +60,10 @@ export default function AddUser() {
             const response = await axios.post("http://localhost:5001/user/create", payload);
 
             const successStatus = response.data.success ? 'true' : 'false';
-            router.push(`/admin/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
+            router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
             const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Pengguna";
-            router.push(`/admin/${slug}/users?success=false&message=${encodeURIComponent(errorMessage)}`);
+            router.push(`/direktur/${slug}/users?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
 
     }
@@ -195,7 +195,7 @@ export default function AddUser() {
                 </div>
                 <div className="flex justify-end gap-3">
                     <button className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
-                    <Link href={`/admin/${slug}/users`}>
+                    <Link href={`/direktur/${slug}/users`}>
                         <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                     </Link>
                 </div>
