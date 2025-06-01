@@ -13,6 +13,7 @@ const dashboardRouter = require("./routes/dashboardRouter");
 const port = process.env.PORT
 const cookieParser = require("cookie-parser");
 const StartEventStatusCron = require("./utils/event-status-update");
+const AutoAbsentCron = require("./utils/attencance-status");
 const connect = require("./utils/connect");
 
 app.use(express.json());
@@ -37,6 +38,7 @@ app.use("/dashboard", dashboardRouter);
 const startServer = async () => {
     await connect();
     StartEventStatusCron();
+    AutoAbsentCron();
 
     app.listen(port, () => {
         console.log(`Server berjalan di http://localhost:${port}`);

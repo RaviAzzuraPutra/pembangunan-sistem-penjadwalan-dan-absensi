@@ -12,6 +12,8 @@ export default function Events() {
     const params = useParams();
     const slug = params.slug;
     const [events, setEvents] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filteredEvent, setFilteredEvent] = useState([]);
 
     useLayoutEffect(() => {
         const success = searchParams.get('success');
@@ -72,6 +74,13 @@ export default function Events() {
 
         }
     }
+
+    useEffect(() => {
+        const filtered = events.filter(event =>
+            event.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredEvent(filtered);
+    }, [searchTerm, events]);
 
 
     const columns = [
@@ -149,11 +158,17 @@ export default function Events() {
                 <Link href={`/direktur/${slug}/events/addEvent`}>
                     <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH ACARA</button>
                 </Link>
+                <input
+                    type="text"
+                    placeholder="Cari Acara..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="mt-5 w-full md:w-1/2 border border-gray-300 rounded text-lg"
+                />
             </div>
-
             <DataTable
                 columns={columns}
-                data={events}
+                data={filteredEvent}
                 pagination
                 paginationPerPage={5}
                 highlightOnHover

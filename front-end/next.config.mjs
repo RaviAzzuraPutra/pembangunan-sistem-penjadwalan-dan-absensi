@@ -1,9 +1,12 @@
-// next.config.mjs
 import withPWA from 'next-pwa';
 
-const nextConfig = {};
+const nextConfig = {
+};
 
 export default withPWA({
-    dest: 'public',
-    ...nextConfig
+    ...nextConfig,
+    dest: "public",
+    register: true,
+    skipWaiting: true,
+    swSrc: 'src/sw-custom.js',
 });

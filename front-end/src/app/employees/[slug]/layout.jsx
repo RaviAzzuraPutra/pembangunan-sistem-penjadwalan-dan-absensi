@@ -1,5 +1,5 @@
 import "../../../app/globals.css";
-
+import PushManager from "../../../components/pushManager";
 
 export const metadata = {
     title: 'Sitem Penjadwalan dan Absensi',
@@ -9,12 +9,15 @@ export const metadata = {
     }
 }
 
+
 export default function RootLayout({ children }) {
     return (
         <div className="overflow-hidden">
-            <main>
-                {children}
-            </main>
+            <PushManager>
+                <main>
+                    {children}
+                </main>
+            </PushManager>
         </div>
     )
 }

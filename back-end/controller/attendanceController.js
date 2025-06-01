@@ -1,8 +1,26 @@
-const fs = require('fs');
 const { detectFace } = require("../utils/faceapi-function");
 const Attendance = require("../models/Attendance");
 const User = require("../models/User");
 const faceapi = require('@vladmandic/face-api');
+const Event = require("../models/Event");
+const Subscription = require("../models/Subscription");
+const webpush = require("web-push");
+require("dotenv").config();
+
+webpush.setVapidDetails(
+    'mailto:admin@yourdomain.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+);
+
+
+function combineDateTime(date, timeStr) {
+    if (!date || !timeStr) return null;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const combined = new Date(date);
+    combined.setHours(hours, minutes, 0, 0);
+    return combined;
+}
 
 
 exports.createAttendance = async (req, res) => {
@@ -66,42 +84,212 @@ exports.createAttendance = async (req, res) => {
 }
 
 exports.getAttendancesByEvent = async (req, res) => {
-    const { Id } = req.params;
+    const { eventId } = req.params;
 
     try {
-        const attendances = await Attendance.find({ event_id: Id })
-            .populate('user_id', 'name slug')
-            .sort({ timestamp: 1 });
+        const event = await Event.findById(eventId)
+            .populate('gudang.user_id', 'name slug')
+            .populate('dapur.penanggung_jawab.user_id', 'name slug')
+            .populate('supervisor.id', 'name slug')
+            .populate('gudang.jobdesk', 'name');
 
-        // Gabungkan absensi berdasarkan user dan tahap
-        const resultMap = {};
 
-        attendances.forEach((att) => {
-            const key = att.user_id._id.toString();
-            if (!resultMap[key]) {
-                resultMap[key] = {
-                    user_id: att.user_id._id,
-                    name: att.user_id.name,
-                    slug: att.user_id.slug,
-                    hadir_prepare: 'belum',
-                    hadir_service: 'belum',
-                };
+        if (!event) {
+            return res.status(404).json({ message: "Event tidak ditemukan" });
+        }
+
+
+        // 1. Kumpulkan semua ID peserta (gudang + dapur + supervisor)
+        const pesertaSet = new Set();
+
+        event.gudang.forEach(g => {
+            if (g.user_id) pesertaSet.add(g.user_id._id.toString());
+        });
+        event.dapur.forEach(d => {
+            d.penanggung_jawab.forEach(pj => {
+                if (pj.user_id) pesertaSet.add(pj.user_id._id.toString());
+            });
+        });
+        // *** Tambahkan supervisor *** 
+        if (event.supervisor?.id) {
+            // setelah populate, event.supervisor.id adalah dokumen User
+            pesertaSet.add(event.supervisor.id._id.toString());
+        }
+
+        // 2. Buat array karyawan dari pesertaSet
+        const karyawanArray = Array.from(pesertaSet).map(userIdStr => {
+            if (event.supervisor?.id?._id.toString() === userIdStr) {
+                return { ...event.supervisor.id.toObject(), jobdeskLabel: 'supervisor' };
             }
 
-            if (att.tahap === 'prepare') {
-                resultMap[key].hadir_prepare = att.status;
-            } else if (att.tahap === 'service') {
-                resultMap[key].hadir_service = att.status;
+            const gud = event.gudang.find(g => g.user_id?._id.toString() === userIdStr);
+            if (gud) {
+                const jobdeskNames = (gud.jobdesk || []).map(j => j.name).join(', ');
+                return { ...gud.user_id.toObject(), jobdeskLabel: jobdeskNames };
             }
+
+            for (const d of event.dapur) {
+                const pj = d.penanggung_jawab.find(pj => pj.user_id?._id.toString() === userIdStr);
+                if (pj) {
+                    return { ...pj.user_id.toObject(), jobdeskLabel: 'penanggung jawab dapur' };
+                }
+            }
+
+            return { _id: userIdStr, name: "Unknown", slug: "", jobdeskLabel: "" };
         });
 
-        const result = Object.values(resultMap);
-        res.json(result);
-    } catch (err) {
-        console.error('Gagal mengambil data absensi:', err);
-        res.status(500).json({ message: 'Terjadi kesalahan server' });
+        const attendanceList = await Attendance.find({ event_id: eventId })
+            .populate('user_id', 'name slug face_data')
+            .sort({ timestamp: -1 });
+
+        console.log("Polygon dari event:", event.location?.polygon || []);
+
+        console.log("Supervisor ID:", event.supervisor.id);
+
+        res.status(200).json({
+            event: {
+                id: event._id,
+                name: event.name,
+                date_prepare: event.date_prepare,
+                date_service: event.date_service,
+                polygon: event.location?.polygon || [],
+                supervisorId: event.supervisor?.id?._id.toString()
+            },
+            total_absen: attendanceList.length,
+            absensi: attendanceList,
+            karyawan: karyawanArray
+        });
+
+    } catch (error) {
+        console.error("Error fetching event:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+exports.saveSubcription = async (req, res) => {
+    try {
+        const { userId, subscription } = req.body;
+
+        const endpoint = subscription.endpoint;
+
+        const existing = await Subscription.findOne({ user: userId, endpoint: subscription.endpoint });
+        if (existing) {
+            existing.subscription = subscription;
+            existing.endpoint = subscription.endpoint;
+            await existing.save();
+        } else {
+            await Subscription.create({
+                user: userId,
+                subscription,
+                endpoint
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Subscription berhasil disimpan."
+        })
+    } catch (error) {
+        console.error("Error saving subscription:", error);
+        res.status(500).json({
+            success: false,
+            message: "Gagal menyimpan subscription.",
+            error: error.message
+        });
+    }
+}
+
+// Helper
+function combineDateTime(date, time) {
+    return new Date(`${date.toISOString().split('T')[0]}T${time}`);
+}
+
+
+exports.remindUserPush = async (req, res) => {
+    try {
+        const { userId, eventId } = req.params;
+
+        console.log("User  ID:", userId);
+        console.log("Event ID:", eventId);
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            console.log("User tidak ditemukan.");
+            console.log("User tidak memiliki pushSubscription");
+            return res.status(404).json({ message: "User tidak ditemukan atau tidak memiliki subscription" });
+        }
+
+        const event = await Event.findById(eventId);
+        if (!event) {
+            console.log("Event tidak ditemukan.");
+            return res.status(404).json({ message: 'Event tidak ditemukan.' });
+        }
+
+        const subscription = await Subscription.find({ user: userId });
+        if (!subscription) return res.status(404).json({ message: "User belum memiliki push subscription." });
+
+        const now = new Date();
+        const startPrepare = combineDateTime(event.date_prepare, event.time_start_prepare);
+        const endPrepare = combineDateTime(event.date_prepare, event.time_end_prepare);
+        const startService = combineDateTime(event.date_service, event.time_start_service);
+        const endService = combineDateTime(event.date_service, event.time_end_service);
+
+
+        let fase = null;
+        if (startPrepare && endPrepare && now >= startPrepare && now <= endPrepare) {
+            fase = 'prepare';
+        } else if (startService && endService && now >= startService && now <= endService) {
+            fase = 'service';
+        }
+
+        if (!fase) {
+            return res.status(400).json({ message: 'Saat ini bukan waktu prepare atau service event.' });
+        }
+
+        let pesan = '';
+        if (fase === 'prepare') {
+            pesan = `Hai ${user.name}, jangan lupa absen untuk fase PREPARE event "${event.name}" pada tanggal ${event.date_prepare} pukul ${event.time_start_prepare} - ${event.time_end_prepare}`;
+        } else if (fase === 'service') {
+            pesan = `Hai ${user.name}, jangan lupa absen untuk fase SERVICE event "${event.name}" pada tanggal ${event.date_service} pukul ${event.time_start_service} - ${event.time_end_service}`;
+        }
+
+
+        const payload = JSON.stringify({
+            title: 'Pengingat Absensi',
+            body: pesan,
+            icon: '/icons/LOGO-PERUSAHAAN.ico',
+        });
+
+        let success = 0;
+        let failed = 0;
+
+        for (const sub of subscription) {
+            try {
+                await webpush.sendNotification(sub.subscription, payload);
+                success++;
+            } catch (err) {
+                console.error("Gagal kirim ke satu subscription:", err.statusCode);
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                    await Subscription.deleteOne({ _id: sub._id });
+                }
+
+                failed++;
+            }
+        }
+
+        console.log(`Pengiriman notifikasi: ${success} berhasil, ${failed} gagal.`);
+
+        res.status(200).json({
+            success: true,
+            message: `Pengingat untuk fase ${fase} telah dikirim ke ${user.name}.`
+        })
+    } catch (error) {
+        console.error('Error sending push notification:', error);
+        console.error(error.stack);
+        res.status(500).json({ message: 'Gagal mengirim notifikasi.', error: error.message });
+    }
+}
 
 
 

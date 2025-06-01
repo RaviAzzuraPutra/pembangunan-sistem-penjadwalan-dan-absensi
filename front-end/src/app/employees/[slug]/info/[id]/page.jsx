@@ -4,8 +4,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 import axios from "axios"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import * as turf from "@turf/turf";
+import { getUserSession } from "../../../../../utils/getSession";
+import Swal from "sweetalert2";
 
 export default function InfoEventPageEmployees() {
     const { slug, id } = useParams();
@@ -15,6 +17,21 @@ export default function InfoEventPageEmployees() {
     const [isPrepareTime, setIsPrepareTime] = useState(false);
     const [isServiceTime, setIsServiceTime] = useState(false);
     const [userPosition, setUserPosition] = useState(null);
+    const router = useRouter();
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const currentUser = await getUserSession();
+            if (!currentUser) {
+                router.replace("/login");
+            } else {
+                setUser(currentUser);
+            }
+        };
+
+        fetchUser();
+    }, []);
 
     useEffect(() => {
         const fetchEventInfo = async () => {
@@ -43,6 +60,12 @@ export default function InfoEventPageEmployees() {
             return;
         }
 
+        const geoOptions = {
+            enableHighAccuracy: true,
+            timeout: 20000,
+            maximumAge: 0
+        };
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -57,20 +80,48 @@ export default function InfoEventPageEmployees() {
                     setUserPosition(position);
                 },
                 (error) => {
-                    if (error.code === 1) {
-                        alert("Akses lokasi ditolak. Silakan izinkan lokasi untuk menggunakan fitur ini.");
-                    } else if (error.code === 2) {
-                        alert("Lokasi tidak tersedia. Pastikan GPS aktif.");
-                    } else if (error.code === 3) {
-                        alert("Permintaan lokasi melebihi batas waktu. Coba lagi.");
+                    switch (error.code) {
+                        case 1:
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Akses lokasi ditolak',
+                                text: 'Silakan izinkan akses lokasi agar dapat menggunakan fitur ini.'
+                            });
+                            break;
+                        case 2:
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Lokasi tidak tersedia',
+                                text: 'Pastikan GPS Anda aktif.'
+                            });
+                            break;
+                        case 3:
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Waktu habis!',
+                                text: 'Permintaan lokasi melebihi batas waktu. Anda akan dialihkan kembali.',
+                                timer: 3000,
+                                timerProgressBar: true,
+                                showConfirmButton: false
+                            }).then(() => {
+                                router.push(`/employees/${slug}`);
+                            });
+                            router.push(`/employees/${slug}`);
+                            break;
+                        default:
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Kesalahan',
+                                text: 'Terjadi kesalahan saat mengambil lokasi.'
+                            });
                     }
                     console.error("Geolocation error:", error);
                     setInsideArea(false);
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                geoOptions
             );
         } else {
-            console.warn("Geolocation tidak didukung oleh browser");
+            alert("Geolocation tidak didukung oleh browser ini.");
             setInsideArea(false);
         }
     }, [eventInfo]);
@@ -95,6 +146,29 @@ export default function InfoEventPageEmployees() {
 
         checkAbsenceTime();
     }, [eventInfo]);
+
+    const handleAbsensi = (tahap) => {
+        if (!user?.face_data || user.face_data.length === 0) {
+            Swal.fire({
+                icon: "warning",
+                title: "Data Wajah Tidak Ditemukan",
+                text: "Anda belum memiliki data wajah. Silakan daftar wajah terlebih dahulu sebelum melakukan absensi.",
+            });
+            return;
+        }
+
+        if (!userPosition) {
+            Swal.fire({
+                icon: "error",
+                title: "Lokasi Tidak Terdeteksi",
+                text: "Pastikan Anda sudah mengaktifkan GPS.",
+            });
+            return;
+        }
+
+        router.push(`/employees/${slug}/info/${id}/attendance/${tahap}?lat=${userPosition.coords.latitude}&lng=${userPosition.coords.longitude}`);
+    };
+
 
     if (loading) {
         return (
@@ -163,36 +237,30 @@ export default function InfoEventPageEmployees() {
                 {insideArea ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5">
                         {userPosition && (role === 'gudang' || role === 'supervisor') && (
-                            <Link href={`/employees/${slug}/info/${id}/attendance/prepare?lat=${userPosition.coords.latitude}&lng=${userPosition.coords.longitude}`} className="w-full">
-                                <button
-                                    className={`w-full px-2 py-1 rounded-md shadow-sm mt-3 ${isPrepareTime ? "bg-violet-500 hover:bg-violet-700 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
-                                    disabled={eventInfo.attendanceStatus.prepare || !isPrepareTime}
-                                >
-                                    ABSEN PREPARE
-                                </button>
-                                {eventInfo.attendanceStatus.prepare && (
-                                    <p className="text-sm text-slate-600 mt-1">Anda sudah melakukan absensi prepare.</p>
-                                )}
-                            </Link>
+                            <button
+                                onClick={() => handleAbsensi("prepare")}
+                                className={`w-full px-2 py-1 rounded-md shadow-sm mt-3 ${isPrepareTime ? "bg-violet-500 hover:bg-violet-700 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
+                                disabled={eventInfo.attendanceStatus.prepare || !isPrepareTime}
+                            >
+                                ABSEN PREPARE
+                            </button>
                         )}
                         {userPosition && (role === 'gudang' || role === 'dapur' || role === 'supervisor') && (
-                            <Link href={`/employees/${slug}/info/${id}/attendance/service?lat=${userPosition.coords.latitude}&lng=${userPosition.coords.longitude}`} className="w-full">
-                                <button
-                                    className={`w-full px-2 py-1 rounded-md shadow-sm mt-3 ${isServiceTime ? "bg-pink-500 hover:bg-pink-700 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
-                                    disabled={eventInfo.attendanceStatus.service || !isServiceTime}
-                                >
-                                    ABSEN SERVICE
-                                </button>
-                                {eventInfo.attendanceStatus.service && (
-                                    <p className="text-sm text-slate-600 mt-1">Anda sudah melakukan absensi service.</p>
-                                )}
-                            </Link>
-                        )}
-                        {role === 'supervisor' && (
-                            <button className="w-full bg-yellow-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-yellow-700 mt-3">
-                                MONITORING
+                            <button
+                                onClick={() => handleAbsensi("service")}
+                                className={`w-full px-2 py-1 rounded-md shadow-sm mt-3 ${isServiceTime ? "bg-pink-500 hover:bg-pink-700 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
+                                disabled={eventInfo.attendanceStatus.service || !isServiceTime}
+                            >
+                                ABSEN SERVICE
                             </button>
 
+                        )}
+                        {role === 'supervisor' && (
+                            <Link href={`/employees/${slug}/info/${id}/monitoring`}>
+                                <button className="w-full bg-yellow-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-yellow-700 mt-3">
+                                    MONITORING
+                                </button>
+                            </Link>
                         )}
                     </div>
                 ) : (
@@ -200,6 +268,6 @@ export default function InfoEventPageEmployees() {
                 )}
 
             </div>
-        </div>
+        </div >
     );
 }
