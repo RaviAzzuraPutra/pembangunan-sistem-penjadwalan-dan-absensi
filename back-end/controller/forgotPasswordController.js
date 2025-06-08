@@ -4,14 +4,17 @@ const bcrypt = require("bcrypt");
 const sendMessage = require("../utils/send-message");
 
 const generateOTP = () => {
-    const base = Math.floor(1000 + Math.random() * 90000).toString().slice(0, 2)
-    return `${base}00`
+    const base = Math.floor(1000 + Math.random() * 90000).toString();
+    return base.padStart(6, '0');
 };
 
 exports.forgotPassword = async (req, res) => {
     const { ID_Login } = req.body;
+
     const user = await User.findOne({ ID_Login });
+
     console.log("Menerima ID_Login:", ID_Login);
+
     if (!user) {
         return res.status(404).json({
             success: false,
@@ -22,8 +25,8 @@ exports.forgotPassword = async (req, res) => {
     const otp = generateOTP();
     const expiredAt = new Date(Date.now() + 60 * 1000);
 
-    await OTP.deleteMany({ ID_Login })
-    await OTP.create({ ID_Login, otp, expiredAt });
+    await OTP.deleteMany({ user_id: user._id })
+    await OTP.create({ user_id: user._id, otp, expiredAt });
 
     await sendMessage(user.phone, `${user.name} Berikut adalah kode OTP anda harap jangan diberikan kepada siapapun ${otp}`);
     return res.status(200).json({
@@ -34,13 +37,20 @@ exports.forgotPassword = async (req, res) => {
 
 exports.verifyOTP = async (req, res) => {
     const { ID_Login, otp } = req.body;
-    const record = await OTP.findOne({ ID_Login, otp });
+    const user = await User.findOne({ ID_Login });
 
-    if (!record || record.expiresAt < new Date()) {
+    if (!user) {
+        return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+    }
+
+    const record = await OTP.findOne({ user_id: user._id, otp });
+
+    if (!record || record.expiredAt < new Date()) {
         return res.status(400).json({ message: 'OTP kadaluarsa atau tidak valid' });
     }
 
-    await OTP.deleteMany({ ID_Login });
+    await OTP.deleteMany({ user_id: user._id });
+
     res.status(200).json({
         success: true,
         message: "OTP Valid"

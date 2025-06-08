@@ -92,6 +92,7 @@ export default function AttendanceData() {
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Data Absensi Berdasarkan Event</h1>
+            <hr className="border-gray-300" />
             <div className="flex w-full h-full justify-end">
                 <input
                     type="text"

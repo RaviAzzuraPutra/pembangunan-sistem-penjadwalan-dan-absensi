@@ -70,8 +70,8 @@ export default function InfoEventPageEmployees() {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const userLocation = turf.point([
-                        position.coords.longitude,
-                        position.coords.latitude
+                        position.coords.latitude,
+                        position.coords.longitude
                     ]);
 
                     const eventPolygon = turf.polygon([polygonCoords]);

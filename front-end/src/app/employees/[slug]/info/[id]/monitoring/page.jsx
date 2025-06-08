@@ -28,6 +28,7 @@ export default function Monitoring() {
     const [eventName, setEventName] = useState([]);
     const [polygon, setPolygon] = useState([]);
     const [tahap, setTahap] = useState(['prepare', 'service']);
+    const [waktu, setWaktu] = useState(new Date().toLocaleString('id-ID'));
 
     useEffect(() => {
         const fetchAbsensi = async () => {
@@ -37,10 +38,11 @@ export default function Monitoring() {
 
                 setEventName(event.name || "-");
                 setPolygon(
-                    (event.polygon || []).map(([lon, lat]) => [lat, lon])
+                    (event.polygon || [])
                 );
 
                 setTahap(event.tahap || ['prepare', 'service']);
+                setWaktu(timestamp || new Date().toLocaleString('id-ID'));
 
                 // Buat map absensi per userId
                 const absensiMap = {};
@@ -125,7 +127,9 @@ export default function Monitoring() {
         div.style.height = '400px';
 
         Swal.fire({
-            title: `Lokasi Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}`,
+            title: `Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
+                ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
+                ` Waktu: ${waktu}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -188,6 +192,11 @@ export default function Monitoring() {
                         onClick={() => handleRemind(row._id)}
                     >
                         Ingatkan!
+                    </button>
+                    <button
+                        className="bg-rose-600 text-white px-1 py-0.5  text-xs rounded hover:bg-rose-800"
+                    >
+                        Izinkan Keluar
                     </button>
                 </div>
             ),

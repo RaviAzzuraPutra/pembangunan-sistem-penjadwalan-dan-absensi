@@ -27,12 +27,32 @@ const AutoAbsentCron = () => {
                 const prepareEnd = moment(`${moment(date_prepare).format("YYYY-MM-DD")} ${time_end_prepare}`, "YYYY-MM-DD HH:mm");
                 const serviceEnd = moment(`${moment(date_service).format("YYYY-MM-DD")} ${time_end_service}`, "YYYY-MM-DD HH:mm");
 
+                // Tahap PREPARE untuk gudang
                 if (now.isAfter(prepareEnd)) {
-                    await markAbsent(eventId, [...gudang, ...dapur], "prepare");
+                    const gudangPrepare = gudang
+                        .filter(g => g.tahap.includes("prepare"))
+                        .map(g => g.user_id);
+
+                    if (gudangPrepare.length) {
+                        await markAbsent(eventId, gudangPrepare, "prepare");
+                    }
                 }
 
+                // Tahap SERVICE untuk gudang dan dapur
                 if (now.isAfter(serviceEnd)) {
-                    await markAbsent(eventId, [...gudang, ...dapur], "service");
+                    const gudangService = gudang
+                        .filter(g => g.tahap.includes("service"))
+                        .map(g => g.user_id);
+
+                    const dapurService = dapur.flatMap(d =>
+                        d.penanggung_jawab.map(pj => pj.user_id)
+                    );
+
+                    const allServiceUsers = [...gudangService, ...dapurService];
+
+                    if (allServiceUsers.length) {
+                        await markAbsent(eventId, allServiceUsers, "service");
+                    }
                 }
             }
         } catch (error) {
@@ -42,25 +62,34 @@ const AutoAbsentCron = () => {
 };
 
 async function markAbsent(eventId, participants, tahap) {
-    for (const user of participants) {
+    for (const userId of participants) {
+        if (!userId) {
+            console.warn(`Lewati absen otomatis karena user_id undefined pada tahap ${tahap}`);
+            continue;
+        }
+
         const alreadyAttend = await Attendance.exists({
             event_id: eventId,
-            user_id: user.user_id,
+            user_id: userId,
             tahap,
         });
 
         if (!alreadyAttend) {
-            await Attendance.create({
-                event_id: eventId,
-                user_id: user.user_id,
-                tahap,
-                timestamp: new Date(),
-                face_match: false,
-                status: "gagal",
-                location: { latitude: 0, longitude: 0 },
-            });
+            try {
+                await Attendance.create({
+                    event_id: eventId,
+                    user_id: userId,
+                    tahap,
+                    timestamp: new Date(),
+                    face_match: false,
+                    status: "gagal",
+                    location: { latitude: 0, longitude: 0 },
+                });
 
-            console.log(`Absen gagal otomatis dibuat untuk user ${user.user_id} tahap ${tahap}`);
+                console.log(`✅ Absen otomatis GAGAL ditandai untuk user ${userId} pada tahap ${tahap}`);
+            } catch (err) {
+                console.error(`❌ Gagal membuat absen otomatis untuk user ${userId} pada tahap ${tahap}:`, err);
+            }
         }
     }
 }

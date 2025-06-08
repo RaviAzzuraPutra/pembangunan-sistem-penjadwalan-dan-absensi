@@ -12,10 +12,7 @@ const EventSchema = new mongoose.Schema({
     time_end_service: String,
     supervisor: {
         id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        confirmation: {
-            status: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' },
-            timestamp: Date
-        }
+        confirmation: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' }
     },
     location: {
         name: String,
@@ -31,20 +28,14 @@ const EventSchema = new mongoose.Schema({
         user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         jobdesk: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Jobdesk' }],
         tahap: [{ type: String, enum: ['prepare', 'service'] }],
-        confirmation: {
-            status: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' },
-            timestamp: Date
-        }
+        confirmation: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' }
     }],
     dapur: [{
         menu: String,
         jumlah_porsi: Number,
         penanggung_jawab: [{
             user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-            confirmation: {
-                status: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' },
-                timestamp: Date
-            }
+            confirmation: { type: String, enum: ['bisa', 'tidak bisa', 'menunggu'], default: 'menunggu' }
         }],
         tahap: { type: String, enum: ['service'], default: 'service' }
     }],

@@ -110,7 +110,7 @@ export default function Events() {
             wrap: true,
         },
         {
-            name: 'Location',
+            name: 'Lokasi',
             selector: row => row.location?.name || '-',
             wrap: true,
         },
@@ -152,8 +152,8 @@ export default function Events() {
 
     return (
         <div className="space-y-6">
-            <h1 className="text-3xl font-bold">Manajemen Penjadwalan</h1>
-
+            <h1 className="text-3xl font-bold">Manajemen Acara</h1>
+            <hr className="border-gray-300" />
             <div className="flex justify-between items-center">
                 <Link href={`/direktur/${slug}/events/addEvent`}>
                     <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH ACARA</button>

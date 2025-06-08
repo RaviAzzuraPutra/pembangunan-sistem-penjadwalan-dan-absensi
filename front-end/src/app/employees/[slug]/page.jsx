@@ -14,10 +14,11 @@ export default function Employees() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        console.log("Slug saat useEffect:", slug);
         const fetchEvents = async () => {
             try {
                 const response = await axios.get(`http://localhost:5001/event/assigned/${slug}`);
-                console.log("Data event:", response.data.data);
+                console.log("Response full:", response.data);
                 setEvents(response.data.data);
             } catch (error) {
                 console.error("Gagal mengambil data event:", error);
@@ -60,7 +61,7 @@ export default function Employees() {
                         if (kategori === "Gudang") {
                             ev.gudang = ev.gudang.map(g => {
                                 if (g.user_id?.slug === slug) {
-                                    g.confirmation = { status, timestamp: new Date() };
+                                    g.confirmation = status;
                                 }
                                 return g;
                             });
@@ -69,7 +70,7 @@ export default function Employees() {
                                 if (d.menu === menu) {
                                     d.penanggung_jawab = d.penanggung_jawab.map(pj => {
                                         if (pj.user_id?.slug === slug) {
-                                            pj.confirmation = { status, timestamp: new Date() };
+                                            pj.confirmation = status;
                                         }
                                         return pj;
                                     });
@@ -77,7 +78,7 @@ export default function Employees() {
                                 return d;
                             });
                         } else if (kategori === "Supervisor") {
-                            ev.supervisor.confirmation = { status, timestamp: new Date() };
+                            ev.supervisor.confirmation = status;
                         }
                     }
                     return ev;
@@ -154,17 +155,18 @@ export default function Employees() {
                                 let menu;
 
                                 if (gudang) {
-                                    confirmationStatus = gudang.confirmation?.status;
+                                    confirmationStatus = gudang.confirmation;
                                     kategori = "Gudang";
                                 } else if (dapurMenu) {
                                     const pj = dapurMenu.penanggung_jawab.find(pj => pj.user_id?.slug === slug);
-                                    confirmationStatus = pj.confirmation?.status;
+                                    confirmationStatus = pj?.confirmation;
                                     kategori = "Dapur";
                                     menu = dapurMenu.menu;
                                 } else if (isSupervisor) {
-                                    confirmationStatus = event.supervisor.confirmation?.status;
+                                    confirmationStatus = event.supervisor.confirmation;
                                     kategori = "Supervisor";
                                 }
+
 
                                 return (
                                     <div key={event._id} className="min-h-[80px] shadow-lg p-4 border-2 border-black space-y-3">
@@ -173,6 +175,7 @@ export default function Employees() {
                                         <p><span className="font-medium">Lokasi:</span> {event.location.name}</p>
                                         <p><span className="font-medium">Tanggal Prepare:</span> {new Date(event.date_prepare).toLocaleDateString()}</p>
                                         <p><span className="font-medium">Tanggal Service:</span> {new Date(event.date_service).toLocaleDateString()}</p>
+                                        <p><span className="font-medium">Status:</span> {event.status}</p>
 
                                         {confirmationStatus === "bisa" ? (
                                             <Link href={`/employees/${slug}/info/${event._id}`}>

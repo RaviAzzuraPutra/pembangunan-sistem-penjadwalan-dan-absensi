@@ -15,18 +15,20 @@ const monitoringSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
-    latitude: {
-        type: Number,
-        required: true,
+    location: {
+        latitude: {
+            type: Number,
+            required: true,
+        },
+        longitude: {
+            type: Number,
+            required: true,
+        },
     },
-    longitude: {
-        type: Number,
-        required: true,
+    note: {
+        type: String,
+        default: '',
     },
-    status_area: {
-        type: Boolean,
-        required: true,
-    },
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('Monitoring', monitoringSchema);

@@ -22,15 +22,12 @@ exports.createEvent = async (req, res) => {
 
         // Tambah Unavailability untuk user gudang
         newEvent.gudang.forEach(g => {
-            ['date_prepare', 'date_service'].forEach(field => {
-                const date = newEvent[field];
-                ops.push({
-                    updateOne: {
-                        filter: { user_id: g.user_id, date },
-                        update: { user_id: g.user_id, date },
-                        upsert: true,
-                    },
-                });
+            ops.push({
+                updateOne: {
+                    filter: { user_id: g.user_id, date: newEvent.date_prepare },
+                    update: { user_id: g.user_id, date: newEvent.date_prepare },
+                    upsert: true,
+                }
             });
         });
 
@@ -384,8 +381,8 @@ exports.confirm = async (req, res) => {
     try {
         const { id } = req.params;
         const { userId, status, kategori, menu } = req.body;
-        const event = await Event.findById(id);
 
+        const event = await Event.findById(id);
         if (!event) {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
         }
@@ -394,6 +391,7 @@ exports.confirm = async (req, res) => {
 
         if (status === "tidak bisa") {
             await Unavailability.create({ user_id: userId, date: tanggal });
+
             if (kategori === 'Gudang') {
                 event.gudang = event.gudang.filter(e => e.user_id.toString() !== userId);
             } else if (kategori === 'Dapur') {
@@ -403,101 +401,162 @@ exports.confirm = async (req, res) => {
                         .filter(pj => pj.user_id.toString() !== userId);
                 }
             } else if (kategori === 'Supervisor') {
-                event.supervisor.confirmation = { status, timestamp: new Date() };
+                event.supervisor.confirmation = 'tidak bisa';
             }
         } else {
             if (kategori === 'Gudang') {
                 const emp = event.gudang.find(e => e.user_id.toString() === userId);
                 if (!emp) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
-                emp.confirmation = { status, timestamp: new Date() };
+                emp.confirmation = status;
             } else if (kategori === 'Dapur') {
                 const menuObj = event.dapur.find(d => d.menu === menu);
                 if (!menuObj) return res.status(404).json({ message: 'Menu dapur tidak ditemukan' });
                 const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
                 if (!pj) return res.status(404).json({ message: 'Penanggung jawab tidak ditemukan' });
-                pj.confirmation = { status, timestamp: new Date() };
+                pj.confirmation = status;
             } else if (kategori === 'Supervisor') {
-                event.supervisor.confirmation = { status, timestamp: new Date() };
+                event.supervisor.confirmation = status;
             }
         }
+
         await event.save();
         return res.status(200).json({ message: 'Konfirmasi kehadiran berhasil', success: true });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Gagal konfirmasi kehadiran' });
     }
 };
 
-exports.getAvailableEmployees = async (req, res) => {
 
+exports.getAvailableEmployees = async (req, res) => {
     try {
         const { date_prepare, date_service } = req.query;
 
         const blocked = new Set();
 
-        const events = await Event.find({
-            $or: [
-                ...(date_prepare ? [{ date_prepare: new Date(date_prepare) }] : []),
-                ...(date_service ? [{ date_service: new Date(date_service) }] : []),
-            ]
-        }).populate('supervisor', 'name')
-            .populate('gudang.user_id', 'name')
-            .populate('dapur.penanggung_jawab.user_id', 'name');
+        const queryDates = [];
+        if (date_prepare) queryDates.push(new Date(date_prepare));
+        if (date_service) queryDates.push(new Date(date_service));
 
-        events.forEach(ev => {
-            if (date_prepare && ev.date_prepare?.toISOString().slice(0, 10) === new Date(date_prepare).toISOString().slice(0, 10)) {
-                if (ev.supervisor?._id) blocked.add(ev.supervisor._id.toString());
+        let prepareEvents = [];
+        let serviceEvents = [];
 
-                ev.gudang?.forEach(g => {
-                    if (g.tahap?.includes('prepare') && g.user_id?._id) {
-                        blocked.add(g.user_id._id.toString());
+        if (date_prepare) {
+            prepareEvents = await Event.find({
+                date_prepare: new Date(date_prepare)
+            }).populate('supervisor.id', 'name') // hanya ambil nama supervisor
+                .populate('gudang.user_id', 'name') // hanya ambil nama user gudang
+                .populate('dapur.penanggung_jawab.user_id', 'name'); // hanya ambil nama user dapur
+        }
+
+        if (date_service) {
+            serviceEvents = await Event.find({
+                date_service: new Date(date_service)
+            }).populate('supervisor.id', 'name')
+                .populate('gudang.user_id', 'name')
+                .populate('dapur.penanggung_jawab.user_id', 'name');
+        }
+
+        // Proses masing-masing
+        prepareEvents.forEach(ev => {
+            if (ev.supervisor?.id?._id) {
+                blocked.add(ev.supervisor.id._id.toString());
+            }
+            ev.gudang?.forEach(g => {
+                if (g.tahap?.includes('prepare') && g.user_id?._id) {
+                    blocked.add(g.user_id._id.toString());
+                }
+            });
+        });
+
+        serviceEvents.forEach(ev => {
+            if (ev.supervisor?.id?._id) {
+                blocked.add(ev.supervisor.id._id.toString());
+            }
+            ev.gudang?.forEach(g => {
+                if (g.tahap?.includes('service') && g.user_id?._id) {
+                    blocked.add(g.user_id._id.toString());
+                }
+            });
+            ev.dapur?.forEach(d => {
+                d.penanggung_jawab?.forEach(pj => {
+                    if (pj.user_id?._id) {
+                        blocked.add(pj.user_id._id.toString());
                     }
                 });
-            }
-
-            if (date_service && ev.date_service?.toISOString().slice(0, 10) === new Date(date_service).toISOString().slice(0, 10)) {
-                if (ev.supervisor?._id) blocked.add(ev.supervisor._id.toString());
-
-                ev.gudang?.forEach(g => {
-                    if (g.tahap?.includes('service') && g.user_id?._id) {
-                        blocked.add(g.user_id._id.toString());
-                    }
-                });
-
-                ev.dapur?.forEach(d => {
-                    d.penanggung_jawab?.forEach(pj => {
-                        if (pj.user_id?._id) {
-                            blocked.add(pj.user_id._id.toString());
-                        }
-                    });
-                });
-            }
+            });
         });
 
 
-        const datesToCheck = [];
-        if (date_prepare) datesToCheck.push(new Date(date_prepare));
-        if (date_service) datesToCheck.push(new Date(date_service));
-
-        const noGo = await Unavailability.find({ date: { $in: datesToCheck } });
-        noGo.forEach(u => {
-            if (u.user_id) {
-                blocked.add(u.user_id.toString());
+        // Blokir dari prepareEvents
+        prepareEvents.forEach(ev => {
+            if (ev.supervisor?.id?._id) {
+                blocked.add(ev.supervisor.id._id.toString());
             }
+
+            ev.gudang?.forEach(g => {
+                if (g.tahap?.includes('prepare') && g.user_id?._id) {
+                    blocked.add(g.user_id._id.toString());
+                }
+            });
+
+            // ❌ Jangan blokir dapur di tahap prepare
         });
 
+        // Blokir dari serviceEvents
+        serviceEvents.forEach(ev => {
+            if (ev.supervisor?.id?._id) {
+                blocked.add(ev.supervisor.id._id.toString());
+            }
 
+            ev.gudang?.forEach(g => {
+                if (g.tahap?.includes('service') && g.user_id?._id) {
+                    blocked.add(g.user_id._id.toString());
+                }
+            });
+
+            ev.dapur?.forEach(d => {
+                d.penanggung_jawab?.forEach(pj => {
+                    if (pj.user_id?._id) {
+                        blocked.add(pj.user_id._id.toString());
+                    }
+                });
+            });
+        });
+
+        // Ambil user yang tidak tersedia di tanggal prepare dan tanggal service
+        const unavailPrepare = date_prepare
+            ? await Unavailability.find({ date: new Date(date_prepare) }).distinct("user_id")
+            : [];
+
+        const unavailService = date_service
+            ? await Unavailability.find({ date: new Date(date_service) }).distinct("user_id")
+            : [];
+
+        const fullyUnavailable = unavailPrepare.filter(id =>
+            unavailService.includes(id.toString())
+        );
+
+        // Blokir hanya user yang tidak bisa hadir di kedua tanggal
+        fullyUnavailable.forEach(id => blocked.add(id.toString()));
+
+
+        // Ambil semua karyawan yang tidak diblok
         const available = await User.find({
             _id: { $nin: Array.from(blocked) },
             role: 'karyawan'
         }).populate('jobdesk', 'name category description');
 
+
         return res.json({ success: true, data: available });
+
     } catch (err) {
         console.error(err);
         return res.status(500).json({ success: false, message: 'Internal Server Error' });
     }
 };
+
 
 exports.getEventInfoForEmployee = async (req, res) => {
     const { slug, id } = req.params;

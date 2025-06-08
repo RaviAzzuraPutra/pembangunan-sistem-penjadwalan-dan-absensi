@@ -41,7 +41,7 @@ export default function VerifyOtp() {
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="ID Login"
+                                    placeholder="OTP"
                                     value={otp}
                                     onChange={(e) => setOtp(e.target.value)}
                                     className="w-full p-4 border border-slate-400 rounded-lg pl-3 pr-10 focus:outline-none focus:border-black"

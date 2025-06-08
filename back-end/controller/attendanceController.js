@@ -172,14 +172,14 @@ exports.saveSubcription = async (req, res) => {
 
         const endpoint = subscription.endpoint;
 
-        const existing = await Subscription.findOne({ user: userId, endpoint: subscription.endpoint });
+        const existing = await Subscription.findOne({ user_id: userId, endpoint: subscription.endpoint });
         if (existing) {
             existing.subscription = subscription;
             existing.endpoint = subscription.endpoint;
             await existing.save();
         } else {
             await Subscription.create({
-                user: userId,
+                user_id: userId,
                 subscription,
                 endpoint
             });
@@ -226,7 +226,7 @@ exports.remindUserPush = async (req, res) => {
             return res.status(404).json({ message: 'Event tidak ditemukan.' });
         }
 
-        const subscription = await Subscription.find({ user: userId });
+        const subscription = await Subscription.find({ user_id: userId });
         if (!subscription) return res.status(404).json({ message: "User belum memiliki push subscription." });
 
         const now = new Date();

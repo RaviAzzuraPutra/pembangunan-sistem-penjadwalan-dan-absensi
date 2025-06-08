@@ -45,7 +45,7 @@ export default function detailEvent() {
                 }
 
                 if (Array.isArray(data.location.polygon)) {
-                    const normalized = data.location.polygon.map(([lng, lat]) => [lat, lng]);
+                    const normalized = data.location.polygon;
                     setPolygon(normalized);
                     console.log("Polygon normalized:", normalized);
                 }
@@ -72,11 +72,16 @@ export default function detailEvent() {
     return (
         <div className='max-w-5xl mx-auto p-6'>
             <h1 className='text-3xl font-bold mb-5 text-black'>{detailEvent.name}</h1>
+            <hr className="border-gray-300" />
             <div className='bg-white shadow-xl rounded-2xl p-4 mb-6 space-y-3'>
                 <p><strong>Slug :</strong> {detailEvent.slug}</p>
                 <p><strong>Status :</strong> {detailEvent.status}</p>
                 <p><strong>Porsi :</strong> {detailEvent.porsi}</p>
-                <p><strong>Supervisor :</strong> {detailEvent.supervisor?.id?.name || '-'}</p>
+                <p>
+                    <strong>Supervisor :</strong> {detailEvent.supervisor?.id?.name || '-'}, (
+                    {detailEvent.supervisor?.confirmation || '-'}
+                    )
+                </p>
                 <p><strong>Dibuat: </strong> {new Date(detailEvent.createdAt).toLocaleDateString()}</p>
                 <p><strong>Diperbarui: </strong>  {new Date(detailEvent.updatedAt).toLocaleDateString()}</p>
 
@@ -93,55 +98,97 @@ export default function detailEvent() {
                     </div>
                 </div>
 
+                {/* Karyawan Gudang */}
                 <div className='bg-white shadow-md rounded-2xl p-5 mb-7'>
-                    <h2 className='text-2xl font-semibold mb-2'>Karyawan Gudang</h2>
-                    {Array.isArray(detailEvent.gudang) && Object.values(
-                        detailEvent.gudang.reduce((acc, g) => {
-                            const userId = g.user_id?._id;
-                            if (!userId) return acc;
+                    <h2 className='text-2xl font-semibold mb-4'>Karyawan Gudang</h2>
+                    <div className="overflow-auto max-h-96">
+                        <table className="w-full text-sm text-left text-gray-700">
+                            <thead className="text-xs uppercase bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th className="py-2 px-4">Nama</th>
+                                    <th className="py-2 px-4">Jobdesk</th>
+                                    <th className="py-2 px-4">Tahap</th>
+                                    <th className="py-2 px-4">Konfirmasi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Array.isArray(detailEvent.gudang) && Object.values(
+                                    detailEvent.gudang.reduce((acc, g) => {
+                                        const userId = g.user_id?._id;
+                                        if (!userId) return acc;
 
-                            if (!acc[userId]) {
-                                acc[userId] = {
-                                    name: g.user_id.name,
-                                    jobdesk: new Set(),
-                                    tahap: new Set(),
-                                    confirmation: g.confirmation,
-                                };
-                            }
+                                        if (!acc[userId]) {
+                                            acc[userId] = {
+                                                name: g.user_id.name,
+                                                jobdesk: new Set(),
+                                                tahap: new Set(),
+                                                confirmation: g.confirmation,
+                                            };
+                                        }
 
-                            g.jobdesk?.forEach(j => acc[userId].jobdesk.add(j.name));
-                            g.tahap?.forEach(t => acc[userId].tahap.add(t));
+                                        g.jobdesk?.forEach(j => acc[userId].jobdesk.add(j.name));
+                                        g.tahap?.forEach(t => acc[userId].tahap.add(t));
 
-                            return acc;
-                        }, {})
-                    ).map((g, i) => (
-                        <div className='mb-2 border-b pb-2' key={i}>
-                            <p><strong>Nama :</strong> {g.name}</p>
-                            <p><strong>Jobdesk :</strong> {[...g.jobdesk].join(', ')}</p>
-                            <p><strong>Tahap :</strong> {[...g.tahap].join(', ')}</p>
-                            <p><strong>Konfirmasi :</strong> {g.confirmation.status} ({g.confirmation.timestamp && new Date(g.confirmation.timestamp).toLocaleString()})</p>
-                        </div>
-                    ))}
-                </div>
-
-                <div className='bg-white shadow-md rounded-2xl p-4'>
-                    <h2 className='text-2xl font-semibold mb-2'>Dapur</h2>
-                    {detailEvent.dapur?.map((d, i) => (
-                        <div className='mb-5 border-b pb-2' key={i}>
-                            <p><strong>Menu :</strong>{d.menu}</p>
-                            <p><strong>Jumlah Porsi :</strong>{d.jumlah_porsi}</p>
-                            <p><strong>Tahap :</strong>{d.tahap}</p>
-                            <div className='ml-4 mt-2'>
-                                <p className='font-semibold'>Penanggung Jawab</p>
-                                {d.penanggung_jawab.map((pj, index) => (
-                                    <p key={index} className='text-sm'>
-                                        {pj.user_id?.name} ({pj.confirmation.status}, {pj.confirmation.timestamp && new Date(pj.confirmation.timestamp).toLocaleString()})
-                                    </p>
+                                        return acc;
+                                    }, {})
+                                ).map((g, i) => (
+                                    <tr key={i} className="border-b hover:bg-gray-50">
+                                        <td className="py-2 px-4">{g.name}</td>
+                                        <td className="py-2 px-4">{[...g.jobdesk].join(', ')}</td>
+                                        <td className="py-2 px-4">{[...g.tahap].join(', ')}</td>
+                                        <td className="py-2 px-4">
+                                            {g.confirmation}
+                                            {g.confirmation.timestamp && (
+                                                <div className="text-xs text-gray-500">{new Date(g.confirmation.timestamp).toLocaleString()}</div>
+                                            )}
+                                        </td>
+                                    </tr>
                                 ))}
-                            </div>
-                        </div>
-                    ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                {/* Dapur */}
+                <div className='bg-white shadow-md rounded-2xl p-5 mb-7'>
+                    <h2 className='text-2xl font-semibold mb-4'>Dapur</h2>
+                    <div className="overflow-auto max-h-96">
+                        <table className="w-full text-sm text-left text-gray-700">
+                            <thead className="text-xs uppercase bg-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th className="py-2 px-4">Menu</th>
+                                    <th className="py-2 px-4">Porsi</th>
+                                    <th className="py-2 px-4">Tahap</th>
+                                    <th className="py-2 px-4">Penanggung Jawab</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {detailEvent.dapur?.map((d, i) => (
+                                    <tr key={i} className="border-b hover:bg-gray-50 align-top">
+                                        <td className="py-2 px-4">{d.menu}</td>
+                                        <td className="py-2 px-4">{d.jumlah_porsi}</td>
+                                        <td className="py-2 px-4">{d.tahap}</td>
+                                        <td className="py-2 px-4">
+                                            {d.penanggung_jawab.map((pj, index) => (
+                                                <div key={index}>
+                                                    <span>{pj.user_id?.name}</span>
+                                                    <span className="block text-xs text-gray-500">
+                                                        {pj.confirmation}
+                                                        {pj.confirmation.timestamp && (
+                                                            <> – {new Date(pj.confirmation.timestamp).toLocaleString()}</>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
                 <div className='mt-6'>
                     <h2 className='text-xl font-semibold'>Lokasi</h2>
                     <p><strong>Nama:</strong> {detailEvent.location?.name}</p>

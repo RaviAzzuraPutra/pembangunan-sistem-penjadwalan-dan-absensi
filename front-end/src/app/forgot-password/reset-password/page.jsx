@@ -57,7 +57,7 @@ export default function ResetPassword() {
                     </div>
 
                     <div className="bg-white p-6 shadow-lg">
-                        <div className="text-center text-gray-700 text-sm mb-6">
+                        <div className="italic text-center text-gray-700 text-sm mb-6">
                             Masukkan password baru Anda
                         </div>
 

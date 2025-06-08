@@ -20,16 +20,19 @@ const costumIcon = L.icon({
     popupAnchor: [0, -32],
 });
 
-function MapClickHandler({ isDrawing, addPoint, isReverseGeocoding, handleReverseGeocode }) {
+function MapClickHandler({ isDrawing, addPoint, handleReverseGeocode }) {
     useMapEvents({
+        dblclick(e) {
+            if (!isDrawing) {
+                handleReverseGeocode(e.latlng.lat, e.latlng.lng);
+            }
+        },
         click(e) {
             if (isDrawing) {
                 addPoint(e.latlng);
-            } else if (isReverseGeocoding) {
-                handleReverseGeocode(e.latlng.lat, e.latlng.lng);
             }
         }
-    })
+    });
     return null;
 }
 
@@ -40,7 +43,6 @@ export default function AddEvent() {
     const [selectedLocation, setSelectedLocation] = useState(null)
     const [polygon, setPolygon] = useState([])
     const [isDrawing, setIsDrawing] = useState(false)
-    const [isReverseGeocoding, setIsReverseGeocoding] = useState(false)
     const [karyawanData, setKaryawanData] = useState([])
     const [dapurList, setDapurList] = useState([])
     const [selectedSupervisor, setSelectedSupervisor] = useState('')
@@ -55,6 +57,7 @@ export default function AddEvent() {
     const [selectedGudang, setSelectedGudang] = useState([]);
     const [locationAddress, setLocationAddress] = useState(null)
     const [searchGudang, setSearchGudang] = useState('')
+    const [allKaryawan, setAllKaryawan] = useState([]);
     const mapRef = useRef(null)
 
     const params = useParams();
@@ -87,6 +90,7 @@ export default function AddEvent() {
             try {
                 const res = await axios.get('http://localhost:5001/event/available-employees');
                 if (res.data.success) {
+                    setAllKaryawan(res.data.data);
                     setKaryawanData(res.data.data);
                     console.log('Initial karyawan:', res.data.data);
                 }
@@ -113,12 +117,16 @@ export default function AddEvent() {
     };
 
     const fetchAvailableEmployees = async () => {
-        if (!prepareDate || !serviceDate) return;
+        if (!prepareDate && !serviceDate) return;
+
         try {
             const { data: { data: available } } = await axios.get(
                 `http://localhost:5001/event/available-employees?date_prepare=${prepareDate}&date_service=${serviceDate}`
             );
-            setKaryawanData(available);
+            const filtered = allKaryawan.filter(k =>
+                available.some(a => a._id === k._id)
+            );
+            setKaryawanData(filtered);
             console.log('Karyawan tersedia di kedua tanggal:', available);
         } catch (error) {
             console.error('Error fetch available employees:', error);
@@ -151,7 +159,8 @@ export default function AddEvent() {
                 setSearchQuery(namaJalan);
                 setSelectedLocation({ lat, lng: lon });
                 setLocationAddress(response.data.address)
-                mapRef.current?.setView([lat, lon], 14);
+                const currentZoom = mapRef.current?.getZoom();
+                mapRef.current?.setView([lat, lon], currentZoom);
             }
         } catch (error) {
             console.log("TERJADI ERROR DALAM REVERSE GEOCODING", error)
@@ -160,8 +169,7 @@ export default function AddEvent() {
 
     const addPoint = (point) => setPolygon((prev) => [...prev, point])
     const handleClearPolygon = () => setPolygon([])
-    const toggleDrawing = () => { setIsReverseGeocoding(false); setIsDrawing((prev) => !prev) }
-    const toggleReverseGeocoding = () => { setIsDrawing(false); setIsReverseGeocoding((prev) => !prev) }
+    const toggleDrawing = () => { setIsDrawing((prev) => !prev) }
 
     const handleSupervisorChange = (e) => {
         setSelectedSupervisor(e.target.value);
@@ -203,9 +211,9 @@ export default function AddEvent() {
             const locationPayload = {
                 name: searchQuery,
                 address: locationAddress,
-                longitude: selectedLocation.lng,
                 latitude: selectedLocation.lat,
-                polygon: closedPolygon.map(p => [p.lng, p.lat]),
+                longitude: selectedLocation.lng,
+                polygon: closedPolygon.map(p => [p.lat, p.lng]),
             }
 
             const gudangPayload = selectedGudang.map(item => {
@@ -225,10 +233,7 @@ export default function AddEvent() {
                     const emp = karyawanData.find(e => e.name === name);
                     return emp ? {
                         user_id: emp._id,
-                        confirmation: {
-                            status: 'menunggu',
-                            timestamp: null
-                        }
+                        confirmation: 'menunggu'
                     } : null;
                 }).filter(Boolean),
                 tahap: 'service'
@@ -252,16 +257,23 @@ export default function AddEvent() {
                 dapur: dapurPayload
             }
 
+            console.log("PAYLOAD:", JSON.stringify(body, null, 2));
+
+
             const response = await axios.post(
                 'http://localhost:5001/event/create',
                 body
             )
-
-            console.log('RESPONSE:', response.status, response.data);
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/events?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
-            console.error("DETAIL ERROR SUBMIT EVENT:", error); // Tambahkan ini
+            if (error.response) {
+                console.error("RESPONSE ERROR:", error.response.data);
+            } else if (error.request) {
+                console.error("NO RESPONSE RECEIVED:", error.request);
+            } else {
+                console.error("REQUEST SETUP ERROR:", error.message);
+            }
             const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Event";
             router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
@@ -286,7 +298,7 @@ export default function AddEvent() {
     return (
         <form onSubmit={handleSubmit}>
             <div className='space-y-8'>
-                <h1 className="text-3xl font-bold">Management Penjadwalan</h1>
+                <h1 className="text-3xl font-bold">Tambah Acara</h1>
                 <hr />
 
                 {/* Info Acara */}
@@ -303,17 +315,17 @@ export default function AddEvent() {
                 <div>
                     <label className="block mb-2 font-medium">Prepare</label>
                     <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} />
-                    <span>Waktu Mulai</span>
+                    <span>Waktu Mulai Prepare</span>
                     <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' />
-                    <span>Waktu Selesai</span>
+                    <span>Waktu Selesai Prepare</span>
                     <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Service</label>
                     <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
-                    <span>Waktu Mulai</span>
+                    <span>Waktu Mulai Service</span>
                     <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' />
-                    <span>Waktu Selesai</span>
+                    <span>Waktu Selesai Service</span>
                     <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' />
                 </div>
 
@@ -456,12 +468,11 @@ export default function AddEvent() {
                 <div className='mb-4'>
                     <button type='button' onClick={toggleDrawing} className='bg-green-500 text-white px-3 py-2 rounded hover:bg-green-700'>{isDrawing ? "Stop Menggambar Polygon" : "Gambar Polygon"}</button>
                     <button type="button" onClick={handleClearPolygon} className='bg-red-500 text-white px-3 py-2 rounded ml-2 hover:bg-red-700'>Hapus Polygon</button>
-                    <button type="button" onClick={toggleReverseGeocoding} className='bg-amber-500 text-white px-3 py-2 rounded ml-2 hover:bg-amber-700'>{isReverseGeocoding ? "Stop Reverse Geocoding" : "Aktifkan Reverse Geocoding"}</button>
                 </div>
-                <MapContainer center={[0, 0]} zoom={2} style={{ height: "400px", width: "100%" }} ref={mapRef} whenCreated={(mapInstance) => { mapRef.current = mapInstance }}>
+                <MapContainer center={[-6.912463506781984, 107.57595823069134]} zoom={16} style={{ height: "400px", width: "100%" }} ref={mapRef} whenCreated={(mapInstance) => { mapRef.current = mapInstance }}>
                     <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                     {selectedLocation && <Marker position={selectedLocation} icon={costumIcon} />}
-                    <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} isReverseGeocoding={isReverseGeocoding} handleReverseGeocode={handleReverseGeocode} />
+                    <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} handleReverseGeocode={handleReverseGeocode} />
                     {polygon.length > 0 && <Polygon positions={polygon} pathOptions={{ color: 'blue' }} />}
                 </MapContainer>
                 <div className="flex justify-end gap-3">

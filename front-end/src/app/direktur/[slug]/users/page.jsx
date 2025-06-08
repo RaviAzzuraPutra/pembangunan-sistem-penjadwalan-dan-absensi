@@ -151,6 +151,7 @@ export default function Users() {
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Manajemen Pengguna</h1>
+            <hr className="border-gray-300" />
             <div className="flex justify-between items-center">
                 <Link href={`/direktur/${slug}/users/addUser`}>
                     <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH PENGGUNA</button>

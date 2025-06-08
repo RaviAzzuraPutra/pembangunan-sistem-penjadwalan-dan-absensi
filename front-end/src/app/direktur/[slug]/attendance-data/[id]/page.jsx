@@ -27,19 +27,21 @@ export default function AttendanceDetailData() {
     const [eventName, setEventName] = useState([]);
     const [polygon, setPolygon] = useState([]);
     const [tahap, setTahap] = useState(['prepare', 'service']);
+    const [waktu, setWaktu] = useState(new Date().toLocaleString('id-ID'));
 
     useEffect(() => {
         const fetchAbsensi = async () => {
             try {
                 const response = await axios.get(`http://localhost:5001/attendance/${id}`);
-                const { event, absensi, karyawan } = response.data;
+                const { event, absensi, karyawan, timestamp } = response.data;
 
                 setEventName(event.name || "-");
                 setPolygon(
-                    (event.polygon || []).map(([lon, lat]) => [lat, lon])
+                    (event.polygon || [])
                 );
 
                 setTahap(event.tahap || ['prepare', 'service']);
+                setWaktu(timestamp || new Date().toLocaleString('id-ID'));
 
                 // Buat map absensi per userId
                 const absensiMap = {};
@@ -106,8 +108,9 @@ export default function AttendanceDetailData() {
 
         Swal.fire({
             //menampilkan nama karyawan nya
-            title: `Lokasi Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
-                ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'}`,
+            title: `Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
+                ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
+                ` Waktu: ${waktu}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -158,12 +161,16 @@ export default function AttendanceDetailData() {
                 ) : row.service
             ),
         },
+        {
+            name: "Keterangan",
+            cell: row => "TEST"
+        }
     ];
 
     return (
         <div className="space-y-6">
             <h1 className="text-3xl font-bold">Data Absensi {eventName}</h1>
-
+            <hr className="border-gray-300" />
             <DataTable
                 columns={columns}
                 data={absensi}
