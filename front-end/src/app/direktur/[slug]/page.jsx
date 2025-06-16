@@ -71,7 +71,7 @@ export default function Dashboard() {
                             { label: "Jumlah Acara", color: "blue", value: stats.totalEvents },
                             { label: "Acara Hari Ini", color: "green", value: stats.upcomingEvents.today },
                             { label: "Acara Minggu Ini", color: "yellow", value: stats.upcomingEvents.thisWeek },
-                            { label: "Acara Bulan Ini", color: "purple", value: stats.upcomingEvents.thisMonth },
+                            { label: "Acara Bulan Ini", color: "violet", value: stats.upcomingEvents.thisMonth },
                             { label: "Jumlah Karyawan", color: "pink", value: stats.totalUsers },
                         ].map((item, idx) => (
                             <div className="space-y-2" key={idx}>

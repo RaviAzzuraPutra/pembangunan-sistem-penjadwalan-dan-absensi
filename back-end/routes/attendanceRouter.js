@@ -9,5 +9,6 @@ router.post("/create/:slug/event/:eventId/tahap/:tahap", upload.single("face"), 
 router.post("/remind/:userId/event/:eventId", attendanceController.remindUserPush);
 router.post("/push-subscription", attendanceController.saveSubcription);
 router.get("/:eventId", attendanceController.getAttendancesByEvent);
+router.post("/out-of-bounds", attendanceController.monitoringLocation);
 
 module.exports = router;

@@ -257,7 +257,53 @@ export default function AddEvent() {
                 dapur: dapurPayload
             }
 
-            console.log("PAYLOAD:", JSON.stringify(body, null, 2));
+            if (!selectedSupervisor) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Supervisor Tidak Boleh Kosong',
+                    text: 'Silakan pilih supervisor untuk acara ini.',
+                });
+                return;
+            }
+
+            if (selectedGudang.length === 0) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Karyawan Gudang Tidak Boleh Kosong",
+                    text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
+                });
+                return;
+            }
+
+            // Validasi penanggung jawab dapur (jika diperlukan)
+            const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
+            if (!hasPenanggungJawab) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Penanggung Jawab Dapur Tidak Boleh Kosong",
+                    text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
+                })
+                return;
+            }
+
+            if (!selectedLocation) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lokasi Tidak Ditemukan',
+                    text: 'Silakan pilih lokasi acara terlebih dahulu.',
+                });
+                return;
+            }
+
+            // Validasi polygon
+            if (!polygon || polygon.length < 4) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Polygon Tidak Valid',
+                    text: 'Silakan gambar polygon dengan minimal 4 titik.',
+                });
+                return;
+            }
 
 
             const response = await axios.post(
@@ -274,7 +320,7 @@ export default function AddEvent() {
             } else {
                 console.error("REQUEST SETUP ERROR:", error.message);
             }
-            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Event";
+            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Acara!";
             router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
     }
@@ -295,6 +341,46 @@ export default function AddEvent() {
         emp.name.toLowerCase().includes(searchGudang.toLowerCase())
     );
 
+    // Mengembalikan array semua user_id yang sudah dipilih di semua stan
+    const getAllSelectedDapurKaryawan = () => {
+        return dapurList.flatMap((menu, i) => menu.penanggung_jawab.map(name => {
+            const emp = karyawanData.find(e => e.name === name);
+            return emp?._id;
+        })).filter(Boolean);
+    };
+
+    const isDapurKaryawanDisabled = (karyawan, currentStanIndex) => {
+        const selectedId = karyawan._id;
+
+        let alasan = null;
+
+        // Cek apakah sudah dipilih di stan lain
+        for (let i = 0; i < dapurList.length; i++) {
+            if (i !== currentStanIndex) {
+                const alreadySelected = dapurList[i].penanggung_jawab.some(name => {
+                    const emp = karyawanData.find(e => e.name === name);
+                    return emp && emp._id === selectedId;
+                });
+                if (alreadySelected) {
+                    alasan = `sudah dipilih pada stan "${dapurList[i].menu}"`;
+                    return { disabled: true, reason: alasan };
+                }
+            }
+        }
+
+        // Cek jika sudah 2 orang di stan ini
+        if (
+            dapurList[currentStanIndex].penanggung_jawab.length >= 2 &&
+            !dapurList[currentStanIndex].penanggung_jawab.includes(karyawan.name)
+        ) {
+            return { disabled: true, reason: `maksimal 2 orang` };
+        }
+
+        return { disabled: false };
+    };
+
+
+
     return (
         <form onSubmit={handleSubmit}>
             <div className='space-y-8'>
@@ -304,29 +390,29 @@ export default function AddEvent() {
                 {/* Info Acara */}
                 <div>
                     <label className="block mb-2 font-medium">Nama Acara</label>
-                    <input type="text" className="w-full border px-3 py-2 rounded" value={namaAcara} onChange={(e) => setNamaAcara(e.target.value)} />
+                    <input type="text" className="w-full border px-3 py-2 rounded" value={namaAcara} onChange={(e) => setNamaAcara(e.target.value)} required />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Porsi</label>
-                    <input type="text" className="w-full border px-3 py-2 rounded" value={porsi} onChange={(e) => setPorsi(e.target.value)} />
+                    <input type="text" className="w-full border px-3 py-2 rounded" value={porsi} onChange={(e) => setPorsi(e.target.value)} required />
                 </div>
 
                 {/* Jadwal Prepare dan Service */}
                 <div>
                     <label className="block mb-2 font-medium">Prepare</label>
-                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} />
+                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} required />
                     <span>Waktu Mulai Prepare</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' />
+                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' required />
                     <span>Waktu Selesai Prepare</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' />
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' required />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Service</label>
-                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
+                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} required />
                     <span>Waktu Mulai Service</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' />
+                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' required />
                     <span>Waktu Selesai Service</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' />
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' requied />
                 </div>
 
                 {/* Supervisor */}
@@ -422,28 +508,41 @@ export default function AddEvent() {
                                     <div className="space-y-1">
                                         {karyawanData
                                             .filter(emp => emp.jobdesk.some(jd => jd.category === 'dapur'))
-                                            .map(emp => (
-                                                <div key={emp._id} className="flex items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`dapur-${index}-${emp._id}`}
-                                                        checked={menu.penanggung_jawab.includes(emp.name)}
-                                                        onChange={(e) => {
-                                                            const updatedList = [...dapurList];
-                                                            if (e.target.checked) {
-                                                                updatedList[index].penanggung_jawab.push(emp.name);
-                                                            } else {
-                                                                updatedList[index].penanggung_jawab = updatedList[index].penanggung_jawab.filter(
-                                                                    n => n !== emp.name
-                                                                );
-                                                            }
-                                                            setDapurList(updatedList);
-                                                        }}
-                                                        className="h-4 w-4 border-2 border-black"
-                                                    />
-                                                    <label htmlFor={`dapur-${index}-${emp._id}`} className="text-sm">{emp.name}</label>
-                                                </div>
-                                            ))}
+                                            .map(emp => {
+                                                const disabledInfo = isDapurKaryawanDisabled(emp, index);
+                                                return (
+                                                    <div key={emp._id} className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`dapur-${index}-${emp._id}`}
+                                                            checked={menu.penanggung_jawab.includes(emp.name)}
+                                                            disabled={disabledInfo.disabled}
+                                                            onChange={(e) => {
+                                                                const updatedList = [...dapurList];
+                                                                if (e.target.checked) {
+                                                                    updatedList[index].penanggung_jawab.push(emp.name);
+                                                                } else {
+                                                                    updatedList[index].penanggung_jawab = updatedList[index].penanggung_jawab.filter(
+                                                                        n => n !== emp.name
+                                                                    );
+                                                                }
+                                                                setDapurList(updatedList);
+                                                            }}
+                                                            className={`h-4 w-4 border-2 ${disabledInfo.disabled ? "border-gray-400 bg-gray-200 cursor-not-allowed" : "border-black"}`}
+                                                        />
+                                                        <label
+                                                            htmlFor={`dapur-${index}-${emp._id}`}
+                                                            className={`text-sm ${disabledInfo.disabled ? "text-gray-400" : ""}`}
+                                                        >
+                                                            {emp.name}
+                                                            {disabledInfo.disabled && (
+                                                                <span className="ml-2 text-xs text-gray-500 italic">– {disabledInfo.reason}</span>
+                                                            )}
+                                                        </label>
+                                                    </div>
+                                                )
+                                            }
+                                            )}
                                     </div>
                                 </div>
 
@@ -476,7 +575,7 @@ export default function AddEvent() {
                     {polygon.length > 0 && <Polygon positions={polygon} pathOptions={{ color: 'blue' }} />}
                 </MapContainer>
                 <div className="flex justify-end gap-3">
-                    <button type='submit' className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
+                    <button type='submit' onClick={handleSubmit} className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
                     <Link href={`/direktur/${slug}/events`}>
                         <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                     </Link>

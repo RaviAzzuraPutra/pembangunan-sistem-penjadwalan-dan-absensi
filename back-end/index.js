@@ -14,6 +14,8 @@ const port = process.env.PORT
 const cookieParser = require("cookie-parser");
 const StartEventStatusCron = require("./utils/event-status-update");
 const AutoAbsentCron = require("./utils/attencance-status");
+const AutoCantCron = require("./utils/auto-Cant");
+const AutoCanCron = require("./utils/auto-can");
 const connect = require("./utils/connect");
 
 app.use(express.json());
@@ -39,6 +41,8 @@ const startServer = async () => {
     await connect();
     StartEventStatusCron();
     AutoAbsentCron();
+    AutoCantCron();
+    AutoCanCron();
 
     app.listen(port, () => {
         console.log(`Server berjalan di http://localhost:${port}`);

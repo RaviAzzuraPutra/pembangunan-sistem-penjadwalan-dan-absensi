@@ -62,7 +62,7 @@ export default function AddUser() {
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Pengguna";
+            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Pengguna!";
             router.push(`/direktur/${slug}/users?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
 

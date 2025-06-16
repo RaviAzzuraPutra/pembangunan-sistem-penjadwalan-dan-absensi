@@ -28,7 +28,6 @@ export default function Monitoring() {
     const [eventName, setEventName] = useState([]);
     const [polygon, setPolygon] = useState([]);
     const [tahap, setTahap] = useState(['prepare', 'service']);
-    const [waktu, setWaktu] = useState(new Date().toLocaleString('id-ID'));
 
     useEffect(() => {
         const fetchAbsensi = async () => {
@@ -42,7 +41,6 @@ export default function Monitoring() {
                 );
 
                 setTahap(event.tahap || ['prepare', 'service']);
-                setWaktu(timestamp || new Date().toLocaleString('id-ID'));
 
                 // Buat map absensi per userId
                 const absensiMap = {};
@@ -56,13 +54,17 @@ export default function Monitoring() {
                             prepare: "-",
                             service: "-",
                             location: null,
+                            prepareTime: null,
+                            serviceTime: null,
                         };
                     }
 
                     if (item.tahap === 'prepare') {
                         absensiMap[userId].prepare = item.status === 'gagal' ? "❌" : "✅";
+                        absensiMap[userId].prepareTime = item.timestamp;
                     } else if (item.tahap === 'service') {
                         absensiMap[userId].service = item.status === 'gagal' ? "❌" : "✅";
+                        absensiMap[userId].serviceTime = item.timestamp;
                     }
 
                     if (!absensiMap[userId].location && item.location) {
@@ -99,8 +101,8 @@ export default function Monitoring() {
             console.log(`pengingat telah dikirim untuk userId: ${userId}`);
             Swal.fire({
                 icon: 'success',
-                title: 'Berhasil!',
-                text: 'Pengingat telah dikirim.',
+                title: 'Berhasil!!!',
+                text: 'Pengingat telah dikirim!',
             });
         } catch (error) {
             console.error("Error sending reminder:", error);
@@ -126,10 +128,15 @@ export default function Monitoring() {
         div.style.width = '100%';
         div.style.height = '400px';
 
+
+        const waktuFormatted = timestamp
+            ? new Date(timestamp).toLocaleString('id-ID')
+            : '-';
+
         Swal.fire({
             title: `Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
                 ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
-                ` Waktu: ${waktu}`,
+                ` Waktu: ${waktuFormatted}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -144,7 +151,8 @@ export default function Monitoring() {
                 if (polygon.length > 0) {
                     L.polygon(polygon, { color: 'blue' }).addTo(map);
                 }
-            }
+            },
+            confirmButtonText: "Tutup"
         });
     }
 
@@ -161,7 +169,7 @@ export default function Monitoring() {
                 row.prepare === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, 'prepare')}
+                        onClick={() => showLocationMap(row.location, row.prepareTime)}
                     >
                         ✅
                     </span>
@@ -175,13 +183,17 @@ export default function Monitoring() {
                 row.service === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, 'service')}
+                        onClick={() => showLocationMap(row.location, row.serviceTime)}
                     >
                         ✅
                     </span>
                 ) : row.service
             ),
             wrap: true,
+        },
+        {
+            name: "keterangan",
+            cell: row => "test"
         },
         {
             name: 'Aksi',
@@ -193,11 +205,11 @@ export default function Monitoring() {
                     >
                         Ingatkan!
                     </button>
-                    <button
+                    {/* <button
                         className="bg-rose-600 text-white px-1 py-0.5  text-xs rounded hover:bg-rose-800"
                     >
                         Izinkan Keluar
-                    </button>
+                    </button> */}
                 </div>
             ),
             width: '20%',

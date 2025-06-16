@@ -8,7 +8,7 @@ router.get("/", userController.getAllUser);
 
 router.get("/:id", userController.getUserByID);
 
-router.put("/update-admin/:id", userController.updateUserByAdmin);
+router.put("/update-direktur/:id", userController.updateUserByAdmin);
 
 router.put("/update-self/:slug", userController.selfUpdateUser);
 

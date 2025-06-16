@@ -4,6 +4,7 @@ const User = require("../models/User");
 const faceapi = require('@vladmandic/face-api');
 const Event = require("../models/Event");
 const Subscription = require("../models/Subscription");
+const Monitoring = require("../models/Monitoring");
 const webpush = require("web-push");
 require("dotenv").config();
 
@@ -40,7 +41,7 @@ exports.createAttendance = async (req, res) => {
 
         const newDescriptor = await detectFace(req.file.buffer);
         if (!newDescriptor) {
-            return res.status(400).json({ message: "Wajah tidak terdeteksi" });
+            return res.status(400).json({ message: "Wajah tidak terdeteksi!", success: false });
         }
 
         const storedDescriptor = JSON.parse(user.face_data);
@@ -48,7 +49,7 @@ exports.createAttendance = async (req, res) => {
         const threshold = 0.6;
         const face_match = Face_Matching < threshold;
         if (!face_match) {
-            return res.status(400).json({ message: "Wajah tidak cocok" });
+            return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
         }
         const status = face_match ? "berhasil" : "gagal";
 
@@ -68,7 +69,7 @@ exports.createAttendance = async (req, res) => {
         await attendance.save();
 
         res.status(200).json({
-            message: "Absensi Berhasil",
+            message: "Absensi Berhasil!",
             success: true,
             status,
             distance: Face_Matching,
@@ -77,6 +78,7 @@ exports.createAttendance = async (req, res) => {
     } catch (error) {
         console.error("Terjadi kesalahan saat membuat absensi:", error);
         res.status(500).json({
+            success: false,
             message: "Terjadi kesalahan server",
             error: error.message || "Internal Server Error"
         })
@@ -157,7 +159,7 @@ exports.getAttendancesByEvent = async (req, res) => {
             },
             total_absen: attendanceList.length,
             absensi: attendanceList,
-            karyawan: karyawanArray
+            karyawan: karyawanArray,
         });
 
     } catch (error) {
@@ -247,11 +249,34 @@ exports.remindUserPush = async (req, res) => {
             return res.status(400).json({ message: 'Saat ini bukan waktu prepare atau service event.' });
         }
 
+        const locale = 'id-ID';
+        const opsiTanggal = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const opsiWaktu = { hour: '2-digit', minute: '2-digit' };
+
+        // Buat fungsi bantu untuk gabung tanggal dan waktu
+        function gabungkanTanggalWaktu(tanggalISO, waktuHHMM) {
+            const tanggal = new Date(tanggalISO);
+            const [jam, menit] = waktuHHMM.split(':');
+            tanggal.setHours(parseInt(jam), parseInt(menit), 0, 0);
+            return tanggal;
+        }
+
+        // Gabungkan untuk fase prepare
+        const tanggalPrepare = new Date(event.date_prepare);
+        const prepareStart = gabungkanTanggalWaktu(event.date_prepare, event.time_start_prepare);
+        const prepareEnd = gabungkanTanggalWaktu(event.date_prepare, event.time_end_prepare);
+
+        // Gabungkan untuk fase service
+        const tanggalService = new Date(event.date_service);
+        const serviceStart = gabungkanTanggalWaktu(event.date_service, event.time_start_service);
+        const serviceEnd = gabungkanTanggalWaktu(event.date_service, event.time_end_service);
+
+        // Pesan
         let pesan = '';
         if (fase === 'prepare') {
-            pesan = `Hai ${user.name}, jangan lupa absen untuk fase PREPARE event "${event.name}" pada tanggal ${event.date_prepare} pukul ${event.time_start_prepare} - ${event.time_end_prepare}`;
+            pesan = `Hai ${user.name}, jangan lupa absen untuk fase PREPARE event "${event.name}" pada ${tanggalPrepare.toLocaleDateString(locale, opsiTanggal)} pukul ${prepareStart.toLocaleTimeString(locale, opsiWaktu)} - ${prepareEnd.toLocaleTimeString(locale, opsiWaktu)}`;
         } else if (fase === 'service') {
-            pesan = `Hai ${user.name}, jangan lupa absen untuk fase SERVICE event "${event.name}" pada tanggal ${event.date_service} pukul ${event.time_start_service} - ${event.time_end_service}`;
+            pesan = `Hai ${user.name}, jangan lupa absen untuk fase SERVICE event "${event.name}" pada ${tanggalService.toLocaleDateString(locale, opsiTanggal)} pukul ${serviceStart.toLocaleTimeString(locale, opsiWaktu)} - ${serviceEnd.toLocaleTimeString(locale, opsiWaktu)}`;
         }
 
 
@@ -278,8 +303,6 @@ exports.remindUserPush = async (req, res) => {
             }
         }
 
-        console.log(`Pengiriman notifikasi: ${success} berhasil, ${failed} gagal.`);
-
         res.status(200).json({
             success: true,
             message: `Pengingat untuk fase ${fase} telah dikirim ke ${user.name}.`
@@ -288,6 +311,49 @@ exports.remindUserPush = async (req, res) => {
         console.error('Error sending push notification:', error);
         console.error(error.stack);
         res.status(500).json({ message: 'Gagal mengirim notifikasi.', error: error.message });
+    }
+}
+
+exports.monitoringLocation = async (req, res) => {
+    try {
+        const { user_id, event_id, location, note } = req.body;
+
+        await Monitoring.create({
+            user_id,
+            event_id,
+            timestamp: new Date(),
+            location: {
+                latitude: parseFloat(location.latitude),
+                longitude: parseFloat(location.longitude)
+            },
+            note: note || ''
+        });
+
+        const event = await Event.findById(event_id);
+        const supervisorId = event.supervisor?.id?._id;
+
+        if (supervisorId) {
+            const subscription = await Subscription.find({ user_id: supervisorId });
+
+            const notificationPayload = {
+                title: 'Monitoring Lokasi',
+                body: `User dengan ID ${user_id} telah melakukan monitoring lokasi pada event ${event.name}.`,
+            }
+
+            subscription.forEach(sub => {
+                webpush.sendNotification(sub.subscription, notificationPayload).catch(error => {
+                    console.error("Gagal mengirim notifikasi:", error);
+                })
+            })
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Monitoring lokasi berhasil disimpan.",
+        })
+    } catch (error) {
+        console.error("Error monitoring location:", error);
+        res.status(500).json({ message: "Gagal memantau lokasi.", error: error.message });
     }
 }
 

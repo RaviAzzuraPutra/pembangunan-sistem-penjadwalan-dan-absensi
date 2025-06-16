@@ -3,6 +3,7 @@
 import { use, useState } from "react"
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import Link from "next/link";
 
 export default function ForgotPassword() {
     const [ID_Login, setID_Login] = useState("");
@@ -49,6 +50,11 @@ export default function ForgotPassword() {
                                 <button type="submit" className="bg-gray-500 text-white px-6 py-2 rounded flex justify-end hover:bg-gray-600">
                                     KIRIM OTP
                                 </button>
+                                <Link href="/login" className="ml-2">
+                                    <button type="submit" className="bg-gray-500 text-white px-6 py-2 rounded flex justify-end hover:bg-gray-600">
+                                        KEMBALI
+                                    </button>
+                                </Link>
                             </div>
                         </form>
                     </div>

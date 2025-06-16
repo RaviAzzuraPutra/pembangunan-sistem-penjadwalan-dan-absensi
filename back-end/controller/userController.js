@@ -120,7 +120,7 @@ exports.deleteUser = async (req, res) => {
             });
         }
         return res.status(200).json({
-            message: "Berhasil Menghapus User",
+            message: "Berhasil Menghapus User!",
             data: user,
             success: true
         })
@@ -188,13 +188,13 @@ exports.selfUpdateUser = async (req, res) => {
             if (updatedFields.length === 1) {
                 switch (updatedFields[0]) {
                     case "password":
-                        message = "Berhasil Mengubah Password!!!";
+                        message = "Berhasil Mengubah Password!";
                         break;
                     case "phone":
-                        message = "Berhasil Mengubah No Telephone!!!";
+                        message = "Berhasil Mengubah No Telephon!";
                         break;
                     case "face_data":
-                        message = "Berhasil Mengubah Data Wajah!!!";
+                        message = "Berhasil Mengubah Data Wajah!";
                         break;
                 }
             }
@@ -207,7 +207,7 @@ exports.selfUpdateUser = async (req, res) => {
         })
     } catch (error) {
         return res.status(500).json({
-            message: "Terjadi kesalahan saat memperbarui data user",
+            message: "Terjadi kesalahan saat memperbarui data user!",
             error: error.message,
             success: false,
         })
@@ -308,10 +308,11 @@ exports.updateUserByAdmin = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Berhasil Update Data",
+            message: "Berhasil Update Data Pengguna!",
             data: user
         });
     } catch (error) {
+        console.error("Error updating user:", error);
         return res.status(500).json({
             message: "Gagal Update Data",
             error: error.message,

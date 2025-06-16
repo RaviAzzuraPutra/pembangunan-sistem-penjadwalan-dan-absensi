@@ -2,6 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import AuthCheck from "../../../utils/authCheck"
+import useLocationMonitoring from "../../../utils/useLocationMonitoring";
 import { useRouter, useParams } from "next/navigation"
 import axios from "axios"
 import { useEffect, useState } from "react"
@@ -12,6 +13,8 @@ export default function Employees() {
     const slug = params.slug;
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [status, setStatus] = useState(null);
+
 
     useEffect(() => {
         console.log("Slug saat useEffect:", slug);
@@ -29,6 +32,31 @@ export default function Employees() {
 
         if (slug) fetchEvents();
     }, [slug]);
+
+    useEffect(() => {
+        if (!navigator.geolocation) {
+            console.warn("Geolocation tidak didukung");
+            return;
+        }
+
+        navigator.permissions?.query({ name: "geolocation" }).then((result) => {
+            if (result.state === "granted" || result.state === "prompt") {
+                // langsung jalankan useLocationMonitoring
+                console.log("Permission lokasi ok:", result.state);
+            } else if (result.state === "denied") {
+                alert("Akses lokasi ditolak, harap izinkan untuk memantau lokasi.");
+            }
+        });
+    }, []);
+
+
+    const runningEvent = events.find(ev => ev.status === "berlangsung");
+
+    useLocationMonitoring({
+        eventInfo: runningEvent,
+        userId: slug,
+        setStatus,
+    });
 
     const handleLogout = async () => {
         try {
@@ -143,86 +171,104 @@ export default function Employees() {
                         ) : events.length === 0 ? (
                             <p className="text-center font-semibold">Anda belum memiliki jadwal acara</p>
                         ) : (
-                            events.map((event) => {
+                            events.filter(event => {
                                 const gudang = event.gudang.find(g => g.user_id?.slug === slug);
+                                if (gudang?.confirmation === 'tidak bisa') return false;
+
                                 const dapurMenu = event.dapur.find(menu =>
-                                    menu.penanggung_jawab.some(pj => pj.user_id?.slug === slug)
+                                    menu.penanggung_jawab.some(pj =>
+                                        pj.user_id?.slug === slug && pj.confirmation === 'tidak bisa'
+                                    )
                                 );
+                                if (dapurMenu) return false;
+
                                 const isSupervisor = event.supervisor?.id?.slug === slug;
+                                if (isSupervisor && event.supervisor.confirmation === 'tidak bisa') return false;
 
-                                let confirmationStatus;
-                                let kategori;
-                                let menu;
-
-                                if (gudang) {
-                                    confirmationStatus = gudang.confirmation;
-                                    kategori = "Gudang";
-                                } else if (dapurMenu) {
-                                    const pj = dapurMenu.penanggung_jawab.find(pj => pj.user_id?.slug === slug);
-                                    confirmationStatus = pj?.confirmation;
-                                    kategori = "Dapur";
-                                    menu = dapurMenu.menu;
-                                } else if (isSupervisor) {
-                                    confirmationStatus = event.supervisor.confirmation;
-                                    kategori = "Supervisor";
-                                }
-
-
-                                return (
-                                    <div key={event._id} className="min-h-[80px] shadow-lg p-4 border-2 border-black space-y-3">
-                                        <h2 className="text-lg font-bold">{event.name}</h2>
-                                        <hr className="border-1 border-gray-300" />
-                                        <p><span className="font-medium">Lokasi:</span> {event.location.name}</p>
-                                        <p><span className="font-medium">Tanggal Prepare:</span> {new Date(event.date_prepare).toLocaleDateString()}</p>
-                                        <p><span className="font-medium">Tanggal Service:</span> {new Date(event.date_service).toLocaleDateString()}</p>
-                                        <p><span className="font-medium">Status:</span> {event.status}</p>
-
-                                        {confirmationStatus === "bisa" ? (
-                                            <Link href={`/employees/${slug}/info/${event._id}`}>
-                                                <button className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-700 mt-3">
-                                                    INFO
-                                                </button>
-                                            </Link>
-                                        ) : confirmationStatus === "tidak bisa" ? null : (
-                                            <div className="flex gap-2 mt-3">
-                                                <button
-                                                    className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-700"
-                                                    onClick={() =>
-                                                        handleConfirm(
-                                                            "bisa",
-                                                            event,
-                                                            kategori,
-                                                            kategori === "Gudang"
-                                                                ? gudang?.user_id?._id
-                                                                : kategori === "Dapur"
-                                                                    ? dapurMenu?.penanggung_jawab.find(pj => pj.user_id?.slug === slug)?.user_id?._id
-                                                                    : event?.supervisor?.id?._id,
-                                                            menu
-                                                        )
-                                                    }
-                                                >
-                                                    Saya Ikut
-                                                </button>
-                                                <button
-                                                    className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-700"
-                                                    onClick={() =>
-                                                        handleConfirm("tidak bisa", event, kategori,
-                                                            kategori === "Gudang"
-                                                                ? gudang?.user_id?._id
-                                                                : kategori === "Dapur"
-                                                                    ? dapurMenu?.penanggung_jawab.find(pj => pj.user_id?.slug === slug)?.user_id?._id
-                                                                    : event?.supervisor?.id?._id,
-                                                            menu
-                                                        )
-                                                    }
-                                                >
-                                                    Tidak Bisa
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
+                                return true;
                             })
+                                .map((event) => {
+                                    const gudang = event.gudang.find(g => g.user_id?.slug === slug);
+                                    const dapurMenu = event.dapur.find(menu =>
+                                        menu.penanggung_jawab.some(pj => pj.user_id?.slug === slug)
+                                    );
+                                    const isSupervisor = event.supervisor?.id?.slug === slug;
+
+                                    let confirmationStatus;
+                                    let kategori;
+                                    let menu;
+
+                                    if (gudang) {
+                                        confirmationStatus = gudang.confirmation;
+                                        kategori = "Gudang";
+                                    } else if (dapurMenu) {
+                                        const pj = dapurMenu.penanggung_jawab.find(pj => pj.user_id?.slug === slug);
+                                        confirmationStatus = pj?.confirmation;
+                                        kategori = "Dapur";
+                                        menu = dapurMenu.menu;
+                                    } else if (isSupervisor) {
+                                        confirmationStatus = event.supervisor.confirmation;
+                                        kategori = "Supervisor";
+                                    }
+
+
+
+
+                                    return (
+                                        <div key={event._id} className="min-h-[80px] shadow-lg p-4 border-2 border-black space-y-3">
+                                            <h2 className="text-lg font-bold">{event.name}</h2>
+                                            <hr className="border-1 border-gray-300" />
+                                            <p><span className="font-medium">Lokasi:</span> {event.location.name}</p>
+                                            <p><span className="font-medium">Tanggal Prepare:</span> {new Date(event.date_prepare).toLocaleDateString()}</p>
+                                            <p><span className="font-medium">Tanggal Service:</span> {new Date(event.date_service).toLocaleDateString()}</p>
+                                            <p><span className="font-medium">Status:</span> {event.status}</p>
+
+                                            {confirmationStatus === "bisa" ? (
+                                                <Link href={`/employees/${slug}/info/${event._id}`}>
+                                                    <button className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-700 mt-3">
+                                                        INFO
+                                                    </button>
+                                                </Link>
+                                            ) : confirmationStatus === "tidak bisa" ? null : (
+                                                <div className="flex gap-2 mt-3">
+                                                    <button
+                                                        className="bg-green-500 text-white px-2 py-1 rounded-md hover:bg-green-700"
+                                                        onClick={() =>
+                                                            handleConfirm(
+                                                                "bisa",
+                                                                event,
+                                                                kategori,
+                                                                kategori === "Gudang"
+                                                                    ? gudang?.user_id?._id
+                                                                    : kategori === "Dapur"
+                                                                        ? dapurMenu?.penanggung_jawab.find(pj => pj.user_id?.slug === slug)?.user_id?._id
+                                                                        : event?.supervisor?.id?._id,
+                                                                menu
+                                                            )
+                                                        }
+                                                    >
+                                                        Saya Ikut
+                                                    </button>
+                                                    <button
+                                                        className="bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-700"
+                                                        onClick={() =>
+                                                            handleConfirm("tidak bisa", event, kategori,
+                                                                kategori === "Gudang"
+                                                                    ? gudang?.user_id?._id
+                                                                    : kategori === "Dapur"
+                                                                        ? dapurMenu?.penanggung_jawab.find(pj => pj.user_id?.slug === slug)?.user_id?._id
+                                                                        : event?.supervisor?.id?._id,
+                                                                menu
+                                                            )
+                                                        }
+                                                    >
+                                                        Tidak Bisa
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
                         )}
                     </div>
                 </div>

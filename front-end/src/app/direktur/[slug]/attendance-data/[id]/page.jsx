@@ -27,13 +27,12 @@ export default function AttendanceDetailData() {
     const [eventName, setEventName] = useState([]);
     const [polygon, setPolygon] = useState([]);
     const [tahap, setTahap] = useState(['prepare', 'service']);
-    const [waktu, setWaktu] = useState(new Date().toLocaleString('id-ID'));
 
     useEffect(() => {
         const fetchAbsensi = async () => {
             try {
                 const response = await axios.get(`http://localhost:5001/attendance/${id}`);
-                const { event, absensi, karyawan, timestamp } = response.data;
+                const { event, absensi, karyawan } = response.data;
 
                 setEventName(event.name || "-");
                 setPolygon(
@@ -41,7 +40,6 @@ export default function AttendanceDetailData() {
                 );
 
                 setTahap(event.tahap || ['prepare', 'service']);
-                setWaktu(timestamp || new Date().toLocaleString('id-ID'));
 
                 // Buat map absensi per userId
                 const absensiMap = {};
@@ -55,13 +53,17 @@ export default function AttendanceDetailData() {
                             prepare: "-",
                             service: "-",
                             location: null,
+                            prepareTime: null,
+                            serviceTime: null,
                         };
                     }
 
                     if (item.tahap === 'prepare') {
                         absensiMap[userId].prepare = item.status === 'gagal' ? "❌" : "✅";
+                        absensiMap[userId].prepareTime = item.timestamp;
                     } else if (item.tahap === 'service') {
                         absensiMap[userId].service = item.status === 'gagal' ? "❌" : "✅";
+                        absensiMap[userId].serviceTime = item.timestamp;
                     }
 
                     if (!absensiMap[userId].location && item.location) {
@@ -79,6 +81,8 @@ export default function AttendanceDetailData() {
                         prepare: absensiMap[key]?.prepare || "-",
                         service: absensiMap[key]?.service || "-",
                         location: absensiMap[key]?.location || null,
+                        prepareTime: absensiMap[key]?.prepareTime || null,
+                        serviceTime: absensiMap[key]?.serviceTime || null,
                     };
                 });
 
@@ -92,7 +96,7 @@ export default function AttendanceDetailData() {
         fetchAbsensi();
     }, [id]);
 
-    const showLocationMap = (location) => {
+    const showLocationMap = (location, timestamp) => {
         if (!location) {
             Swal.fire({
                 icon: "error",
@@ -106,11 +110,15 @@ export default function AttendanceDetailData() {
         div.style.width = '100%';
         div.style.height = '400px';
 
+        const waktuFormatted = timestamp
+            ? new Date(timestamp).toLocaleString('id-ID')
+            : '-';
+
         Swal.fire({
             //menampilkan nama karyawan nya
             title: `Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
                 ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
-                ` Waktu: ${waktu}`,
+                ` Waktu: ${waktuFormatted}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -125,7 +133,8 @@ export default function AttendanceDetailData() {
                 if (polygon.length > 0) {
                     L.polygon(polygon, { color: 'blue' }).addTo(map);
                 }
-            }
+            },
+            confirmButtonText: "Tutup"
         });
     }
 
@@ -141,7 +150,7 @@ export default function AttendanceDetailData() {
                 row.prepare === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, 'prepare')}
+                        onClick={() => showLocationMap(row.location, row.prepareTime)}
                     >
                         ✅
                     </span>
@@ -154,7 +163,7 @@ export default function AttendanceDetailData() {
                 row.service === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, 'service')}
+                        onClick={() => showLocationMap(row.location, row.serviceTime)}
                     >
                         ✅
                     </span>

@@ -212,12 +212,11 @@ export default function InfoEventPageEmployees() {
                     <p><span className="font-semibold">Jam Service:</span> {event.time_start_service} - {event.time_end_service}</p>
                     <p><span className="font-semibold">Lokasi:</span> {event.location?.name}</p>
                     <p><span className="font-semibold">Status:</span> {event.status}</p>
-                </div>
-
-                <div className="border p-3 rounded-md bg-white shadow-inner mt-4">
-                    <h2 className="font-semibold mb-2">Status Absensi:</h2>
-                    <p>Prepare: {eventInfo.attendanceStatus.prepare ? '✅' : '❌'}</p>
-                    <p>Service: {eventInfo.attendanceStatus.service ? '✅' : '❌'}</p>
+                    <p className="font-semibold mb-2">Status Absensi:</p>
+                    <div className="p-2 mt-4 text-base">
+                        <p>Prepare: {eventInfo.attendanceStatus.prepare ? '✅' : '❌'}</p>
+                        <p>Service: {eventInfo.attendanceStatus.service ? '✅' : '❌'}</p>
+                    </div>
                 </div>
 
                 <div>

@@ -54,6 +54,18 @@ const AutoAbsentCron = () => {
                         await markAbsent(eventId, allServiceUsers, "service");
                     }
                 }
+
+                const supervisorId = event.supervisor?.id?.toString();
+
+                if (supervisorId) {
+                    if (now.isAfter(prepareEnd)) {
+                        await markAbsent(eventId, [supervisorId], "prepare");
+                    }
+
+                    if (now.isAfter(serviceEnd)) {
+                        await markAbsent(eventId, [supervisorId], "service");
+                    }
+                }
             }
         } catch (error) {
             console.error("Gagal Menandai Absen Otomatis: ", error);
@@ -63,7 +75,7 @@ const AutoAbsentCron = () => {
 
 async function markAbsent(eventId, participants, tahap) {
     for (const userId of participants) {
-        if (!userId) {
+        if (!userId || !userId.toString().trim()) {
             console.warn(`Lewati absen otomatis karena user_id undefined pada tahap ${tahap}`);
             continue;
         }

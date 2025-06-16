@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import axios from "axios"
+import { loadModels, detectFace } from "../../../../../utils/faceDetection";
 
 export default function ChangeFace() {
     const videoRef = useRef(null)
@@ -12,10 +13,12 @@ export default function ChangeFace() {
     const params = useParams();
     const slug = params.slug;
     const router = useRouter();
+    const canvasRef = useRef(null);
 
     useEffect(() => {
         const enableCamera = async () => {
             try {
+                await loadModels(); // Load face detection models if needed
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
@@ -29,14 +32,10 @@ export default function ChangeFace() {
         enableCamera()
 
         return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject;
-                const tracks = stream.getTracks();
-                tracks.forEach(track => track.stop());
-                videoRef.current.srcObject = null;
-                setCameraActive(false);
+            if (videoRef.current?.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(t => t.stop());
             }
-        }
+        };
     }, []);
 
     const handleCapture = async () => {
@@ -72,6 +71,17 @@ export default function ChangeFace() {
         }, "image/jpeg")
     }
 
+    useEffect(() => {
+        let interval;
+        if (videoRef.current && canvasRef.current) {
+            interval = setInterval(() => {
+                detectFace(videoRef.current, canvasRef.current);
+            }, 200); // setiap 200ms
+        }
+
+        return () => clearInterval(interval);
+    }, [cameraActive]);
+
     return (
         <div className="min-h-screen p-5 flex flex-col space-y-7">
             <div className="w-full">
@@ -98,8 +108,8 @@ export default function ChangeFace() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
-                        style={{ transform: "scaleX(-1)" }}
                     />
+                    <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>
 
                 <div

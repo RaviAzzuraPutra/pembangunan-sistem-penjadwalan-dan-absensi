@@ -1,11 +1,25 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
+
+const clearDebugLog = () => {
+    const debugLogPath = path.join(__dirname, '.wwebjs_auth', 'session', 'Default', 'chrome_debug.log');
+    try {
+        if (fs.existsSync(debugLogPath)) {
+            fs.unlinkSync(debugLogPath);
+        }
+    } catch (err) {
+        console.warn("Tidak bisa hapus chrome_debug.log:", err.message);
+    }
+};
 
 let client;
 let qrCodeData = null;
 let isReady = false;
 
 const initClient = () => {
+    clearDebugLog();
     client = new Client({
         authStrategy: new LocalAuth(),
         puppeteer: {
@@ -30,21 +44,24 @@ const initClient = () => {
         console.error("Autentikasi Gagal:", msg);
     });
 
-    client.on('disconnected', (reason) => {
+    client.on('disconnected', async (reason) => {
         isReady = false;
         console.warn("WhatsApp Terputus:", reason);
         console.log("Menginisialisasi ulang client...");
 
-        // Hentikan client lama dan buat ulang client baru
-        client.destroy()
-            .then(() => {
-                initClient(); // Rekoneksi otomatis
-            })
-            .catch(err => {
-                console.error("Gagal destroy client:", err);
-                // Retry initClient jika perlu
-                setTimeout(initClient, 5000);
-            });
+        try {
+            await client.destroy();
+        } catch (err) {
+            console.error("Gagal destroy client:", err.message);
+        }
+
+        setTimeout(() => {
+            try {
+                initClient();
+            } catch (err) {
+                console.error("Gagal init ulang client:", err.message);
+            }
+        }, 5000);
     });
 
     client.on('error', (err) => {

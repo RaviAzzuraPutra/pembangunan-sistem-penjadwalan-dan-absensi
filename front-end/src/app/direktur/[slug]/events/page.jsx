@@ -65,7 +65,11 @@ export default function Events() {
             try {
                 const res = await axios.delete(`http://localhost:5001/event/delete/${eventID}`);
                 if (res.status === 200) {
-                    Swal.fire("Berhasil!", `Event ${event.name} dihapus.`, "success");
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!!!',
+                        text: res.data.message,
+                    });
                     setEvents(events.filter(e => e._id !== eventID));
                 }
             } catch (error) {

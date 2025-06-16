@@ -34,12 +34,12 @@ export default function UpdateUser() {
                 const user = response.data.data;
                 setFormData({
                     name: user.name,
-                    password: "",  // Password tidak bisa diambil secara langsung
+                    password: "",
                     phone: user.phone,
                     is_supervisor_candidate: user.is_supervisor_candidate,
-                    role: "karyawan",  // Set default jika diperlukan
+                    role: "karyawan",
                 });
-                setSelectedJobdesk(user.jobdesk.map(jd => jd._id));  // Set jobdesk yang dipilih
+                setSelectedJobdesk(user.jobdesk.map(jd => jd._id));
             } catch (error) {
                 console.error("Gagal mengambil data pengguna:", error);
             }
@@ -75,11 +75,12 @@ export default function UpdateUser() {
             }
 
             const response = await axios.put(`http://localhost:5001/user/update-direktur/${id}`, payload);
-
+            console.log("Response:", response.data);
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Pengguna";
+            console.error("Gagal mengubah pengguna:", error);
+            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Mengubah Pengguna!";
             router.push(`/direktur/${slug}/users?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
     }

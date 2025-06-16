@@ -139,7 +139,11 @@ export default function Users() {
             try {
                 const res = await axios.delete(`http://localhost:5001/user/delete/${userID}`);
                 if (res.status === 200) {
-                    Swal.fire("Berhasil!", `Pengguna ${user.name} dihapus.`, "success");
+                    Swal.fire({
+                        icon: "success",
+                        title: "Berhasil!!!",
+                        text: res.data.message,
+                    })
                     setUsers(users.filter(u => u._id !== userID));
                 }
             } catch (error) {

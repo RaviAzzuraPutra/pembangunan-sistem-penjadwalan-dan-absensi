@@ -17,7 +17,6 @@ exports.getDashboardData = async (req, res) => {
         const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
         const endOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
 
-        console.log({ startOfDay, endOfDay, today, endOfWeek, startOfMonth, endOfMonth });
 
         const todayEvent = await Event.countDocuments({
             date_service: {

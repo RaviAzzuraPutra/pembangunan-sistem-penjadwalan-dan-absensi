@@ -20,16 +20,19 @@ const costumIcon = L.icon({
     popupAnchor: [0, -32],
 });
 
-function MapClickHandler({ isDrawing, addPoint, isReverseGeocoding, handleReverseGeocode }) {
+function MapClickHandler({ isDrawing, addPoint, handleReverseGeocode }) {
     useMapEvents({
+        dblclick(e) {
+            if (!isDrawing) {
+                handleReverseGeocode(e.latlng.lat, e.latlng.lng);
+            }
+        },
         click(e) {
             if (isDrawing) {
                 addPoint(e.latlng);
-            } else if (isReverseGeocoding) {
-                handleReverseGeocode(e.latlng.lat, e.latlng.lng);
             }
         }
-    })
+    });
     return null;
 }
 
@@ -40,7 +43,6 @@ export default function UpdateEvent() {
     const [selectedLocation, setSelectedLocation] = useState(null)
     const [polygon, setPolygon] = useState([])
     const [isDrawing, setIsDrawing] = useState(false)
-    const [isReverseGeocoding, setIsReverseGeocoding] = useState(false)
     const [karyawanData, setKaryawanData] = useState([])
     const [dapurList, setDapurList] = useState([])
     const [selectedSupervisor, setSelectedSupervisor] = useState('')
@@ -54,12 +56,60 @@ export default function UpdateEvent() {
     const [serviceEndTime, setServiceEndTime] = useState('')
     const [selectedGudang, setSelectedGudang] = useState([]);
     const [locationAddress, setLocationAddress] = useState(null)
+    const [searchGudang, setSearchGudang] = useState('')
+    const [allKaryawan, setAllKaryawan] = useState([]);
+    const [event, setEvent] = useState(null);
     const mapRef = useRef(null)
 
     const params = useParams();
     const slug = params.slug;
     const router = useRouter();
-    const id = params.id;
+
+    useEffect(() => {
+        const fetchEvent = async () => {
+            const res = await axios.get(`http://localhost:5001/event/${params.id}`);
+            const event = res.data.data;
+            setEvent(event);
+
+            // Preload minimal
+            setNamaAcara(event.name);
+            setPorsi(event.porsi);
+            setPrepareDate(event.date_prepare?.slice(0, 10));
+            setServiceDate(event.date_service?.slice(0, 10));
+            setPrepareStartTime(event.time_start_prepare);
+            setPrepareEndTime(event.time_end_prepare);
+            setServiceStartTime(event.time_start_service);
+            setServiceEndTime(event.time_end_service);
+            setSelectedLocation({
+                lat: event.location.latitude,
+                lng: event.location.longitude
+            });
+            setPolygon(event.location.polygon.map(([lat, lng]) => ({ lat, lng })));
+            setSearchQuery(event.location.name);
+            setLocationAddress(event.location.address);
+            setSelectedSupervisor(event.supervisor?.id?.name);
+            setSelectedGudang(
+                event.gudang
+                    .filter(g => g.confirmation !== 'tidak bisa')
+                    .map(g => ({
+                        userId: g.user_id._id,
+                        jobdesk: g.jobdesk[0]?.name
+                    }))
+            );
+            setDapurList(
+                event.dapur.map(d => ({
+                    menu: d.menu,
+                    jumlah_porsi: d.jumlah_porsi,
+                    penanggung_jawab: d.penanggung_jawab
+                        .filter(pj => pj.confirmation !== 'tidak bisa')
+                        .map(pj => pj.user_id.name)
+                }))
+            );
+        };
+
+        fetchEvent();
+    }, []);
+
 
     useEffect(() => {
         const map = mapRef.current
@@ -87,6 +137,7 @@ export default function UpdateEvent() {
             try {
                 const res = await axios.get('http://localhost:5001/event/available-employees');
                 if (res.data.success) {
+                    setAllKaryawan(res.data.data);
                     setKaryawanData(res.data.data);
                     console.log('Initial karyawan:', res.data.data);
                 }
@@ -96,10 +147,6 @@ export default function UpdateEvent() {
         };
         fetchAllKaryawan();
     }, []);
-
-    useEffect(() => {
-        fetchAvailableEmployees();
-    }, [prepareDate, serviceDate]);
 
     const handleGudangToggle = (userId, jobdesk) => {
         setSelectedGudang(prev => {
@@ -113,12 +160,16 @@ export default function UpdateEvent() {
     };
 
     const fetchAvailableEmployees = async () => {
-        if (!prepareDate || !serviceDate) return;
+        if (!prepareDate && !serviceDate) return;
+
         try {
             const { data: { data: available } } = await axios.get(
                 `http://localhost:5001/event/available-employees?date_prepare=${prepareDate}&date_service=${serviceDate}`
             );
-            setKaryawanData(available);
+            const filtered = allKaryawan.filter(k =>
+                available.some(a => a._id === k._id)
+            );
+            setKaryawanData(filtered);
             console.log('Karyawan tersedia di kedua tanggal:', available);
         } catch (error) {
             console.error('Error fetch available employees:', error);
@@ -151,7 +202,8 @@ export default function UpdateEvent() {
                 setSearchQuery(namaJalan);
                 setSelectedLocation({ lat, lng: lon });
                 setLocationAddress(response.data.address)
-                mapRef.current?.setView([lat, lon], 14);
+                const currentZoom = mapRef.current?.getZoom();
+                mapRef.current?.setView([lat, lon], currentZoom);
             }
         } catch (error) {
             console.log("TERJADI ERROR DALAM REVERSE GEOCODING", error)
@@ -160,14 +212,11 @@ export default function UpdateEvent() {
 
     const addPoint = (point) => setPolygon((prev) => [...prev, point])
     const handleClearPolygon = () => setPolygon([])
-    const toggleDrawing = () => { setIsReverseGeocoding(false); setIsDrawing((prev) => !prev) }
-    const toggleReverseGeocoding = () => { setIsDrawing(false); setIsReverseGeocoding((prev) => !prev) }
+    const toggleDrawing = () => { setIsDrawing((prev) => !prev) }
 
     const handleSupervisorChange = (e) => {
         setSelectedSupervisor(e.target.value);
     }
-
-    const selectedSupervisorId = karyawanData.find(emp => emp.name === selectedSupervisor)?._id;
 
     const handleAddMenu = () => {
         setDapurList(prev => [...prev, { menu: '', stan: '', jumlah_porsi: '', penanggung_jawab: [] }])
@@ -195,15 +244,19 @@ export default function UpdateEvent() {
     }
 
 
+
+    const selectedSupervisorId = karyawanData.find(emp => emp.name === selectedSupervisor)?._id;
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             const locationPayload = {
                 name: searchQuery,
                 address: locationAddress,
-                longitude: selectedLocation.lng,
                 latitude: selectedLocation.lat,
-                polygon: closedPolygon.map(p => [p.lng, p.lat]),
+                longitude: selectedLocation.lng,
+                polygon: closedPolygon.map(p => [p.lat, p.lng]),
             }
 
             const gudangPayload = selectedGudang.map(item => {
@@ -218,15 +271,17 @@ export default function UpdateEvent() {
 
             const dapurPayload = dapurList.map(menu => ({
                 menu: menu.menu,
-                stan: menu.stan,
                 jumlah_porsi: Number(menu.jumlah_porsi),
                 penanggung_jawab: menu.penanggung_jawab.map(name => {
-                    const emp = karyawanData.find(e => e.name === name)
-                    return emp
-                        ? { user_id: emp._id, name: emp.name }
-                        : null
-                }).filter(Boolean)
-            }))
+                    const emp = karyawanData.find(e => e.name === name);
+                    return emp ? {
+                        user_id: emp._id,
+                        confirmation: 'menunggu'
+                    } : null;
+                }).filter(Boolean),
+                tahap: 'service'
+            }));
+
 
             const body = {
                 name: namaAcara,
@@ -237,86 +292,84 @@ export default function UpdateEvent() {
                 date_service: serviceDate,
                 time_start_service: serviceStartTime,
                 time_end_service: serviceEndTime,
-                supervisor: selectedSupervisorId,
+                supervisor: {
+                    id: selectedSupervisorId
+                },
                 location: locationPayload,
                 gudang: gudangPayload,
                 dapur: dapurPayload
             }
 
-            const response = await axios.put(
-                `http://localhost:5001/event/${id}`,
-                body
-            );
+            if (!selectedSupervisor) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Supervisor Tidak Boleh Kosong',
+                    text: 'Silakan pilih supervisor untuk acara ini.',
+                });
+                return;
+            }
 
-            console.log('RESPONSE:', response.status, response.data);
+            if (selectedGudang.length === 0) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Karyawan Gudang Tidak Boleh Kosong",
+                    text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
+                });
+                return;
+            }
+
+            // Validasi penanggung jawab dapur (jika diperlukan)
+            const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
+            if (!hasPenanggungJawab) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Penanggung Jawab Dapur Tidak Boleh Kosong",
+                    text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
+                })
+                return;
+            }
+
+            if (!selectedLocation) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lokasi Tidak Ditemukan',
+                    text: 'Silakan pilih lokasi acara terlebih dahulu.',
+                });
+                return;
+            }
+
+            // Validasi polygon
+            if (!polygon || polygon.length < 4) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Polygon Tidak Valid',
+                    text: 'Silakan gambar polygon dengan minimal 4 titik.',
+                });
+                return;
+            }
+
+
+
+            const response = await axios.put(
+                `http://localhost:5001/event/update/${params.id}`,
+                body
+            )
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/events?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
-            console.error("DETAIL ERROR SUBMIT EVENT:", error); // Tambahkan ini
-            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Event";
+            if (error.response) {
+                console.error("RESPONSE ERROR:", error.response.data);
+            } else if (error.request) {
+                console.error("NO RESPONSE RECEIVED:", error.request);
+            } else {
+                console.error("REQUEST SETUP ERROR:", error.message);
+            }
+            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Acara!";
             router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
     }
 
-    useEffect(() => {
-        const fetchEventDetail = async () => {
-            try {
-                const res = await axios.get(`http://localhost:5001/event/${id}`);
-                if (res.data.success) {
-                    const data = res.data.data;
 
-                    // Isi semua state dari data event
-                    setNamaAcara(data.name || '');
-                    setPorsi(data.porsi || '');
-                    setPrepareDate(data.date_prepare?.slice(0, 10) || '');
-                    setServiceDate(data.date_service?.slice(0, 10) || '');
-                    setPrepareStartTime(data.time_start_prepare || '');
-                    setPrepareEndTime(data.time_end_prepare || '');
-                    setServiceStartTime(data.time_start_service || '');
-                    setServiceEndTime(data.time_end_service || '');
-                    setSelectedSupervisor(data.supervisor?.name || '');
-
-                    // Lokasi
-                    if (data.location) {
-                        setSearchQuery(data.location.name || '');
-                        setLocationAddress(data.location.address || '');
-                        setSelectedLocation({
-                            lat: data.location.latitude,
-                            lng: data.location.longitude
-                        });
-                        if (Array.isArray(data.location.polygon)) {
-                            const poly = data.location.polygon.map(([lng, lat]) => ({ lat, lng }));
-                            setPolygon(poly);
-                        }
-                    }
-
-                    // Gudang
-                    if (Array.isArray(data.gudang)) {
-                        const gudangList = data.gudang.map(g => ({
-                            userId: g.user_id?._id,
-                            jobdesk: g.jobdesk[0]?.name
-                        }));
-                        setSelectedGudang(gudangList);
-                    }
-
-                    // Dapur
-                    if (Array.isArray(data.dapur)) {
-                        const dapurMenus = data.dapur.map(menu => ({
-                            menu: menu.menu,
-                            stan: menu.stan,
-                            jumlah_porsi: menu.jumlah_porsi,
-                            penanggung_jawab: menu.penanggung_jawab.map(pj => pj.user_id?.name)
-                        }));
-                        setDapurList(dapurMenus);
-                    }
-                }
-            } catch (error) {
-                console.error("Gagal mengambil data event:", error);
-            }
-        };
-
-        if (id) fetchEventDetail();
-    }, [id]);
 
     const jdList = Array.from(new Set(
         karyawanData.flatMap(emp =>
@@ -326,49 +379,123 @@ export default function UpdateEvent() {
         )
     ));
 
+    const filteredGudangData = karyawanData.filter(emp => {
+        const gudangEventData = event?.gudang.find(g => g.user_id._id === emp._id);
+        const konfirmasi = gudangEventData?.confirmation;
+
+        if (konfirmasi === 'tidak bisa') return false;
+
+        return emp.jobdesk.some(jd => jd.category === 'gudang') &&
+            emp._id !== selectedSupervisorId &&
+            emp.name.toLowerCase().includes(searchGudang.toLowerCase());
+    });
+
+    const isDapurKaryawanDisabled = (karyawan, currentStanIndex) => {
+        const selectedId = karyawan._id;
+
+        let alasan = null;
+
+        // Cek apakah sudah dipilih di stan lain
+        for (let i = 0; i < dapurList.length; i++) {
+            if (i !== currentStanIndex) {
+                const alreadySelected = dapurList[i].penanggung_jawab.some(name => {
+                    const emp = karyawanData.find(e => e.name === name);
+                    return emp && emp._id === selectedId;
+                });
+                if (alreadySelected) {
+                    alasan = `sudah dipilih pada stan "${dapurList[i].menu}"`;
+                    return { disabled: true, reason: alasan };
+                }
+            }
+        }
+
+        // Cek jika sudah 2 orang di stan ini
+        if (
+            dapurList[currentStanIndex].penanggung_jawab.length >= 2 &&
+            !dapurList[currentStanIndex].penanggung_jawab.includes(karyawan.name)
+        ) {
+            return { disabled: true, reason: `maksimal 2 orang` };
+        }
+
+        return { disabled: false };
+    };
+
+
+
+
+
     return (
         <form onSubmit={handleSubmit}>
             <div className='space-y-8'>
-                <h1 className="text-3xl font-bold">Management Penjadwalan</h1>
+                <h1 className="text-3xl font-bold">Tambah Acara</h1>
                 <hr />
 
                 {/* Info Acara */}
                 <div>
                     <label className="block mb-2 font-medium">Nama Acara</label>
-                    <input type="text" className="w-full border px-3 py-2 rounded" value={namaAcara} onChange={(e) => setNamaAcara(e.target.value)} />
+                    <input type="text" className="w-full border px-3 py-2 rounded" value={namaAcara} onChange={(e) => setNamaAcara(e.target.value)} required />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Porsi</label>
-                    <input type="text" className="w-full border px-3 py-2 rounded" value={porsi} onChange={(e) => setPorsi(e.target.value)} />
+                    <input type="text" className="w-full border px-3 py-2 rounded" value={porsi} onChange={(e) => setPorsi(e.target.value)} required />
                 </div>
 
                 {/* Jadwal Prepare dan Service */}
                 <div>
                     <label className="block mb-2 font-medium">Prepare</label>
-                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} />
-                    <span>Waktu Mulai</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' />
-                    <span>Waktu Selesai</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' />
+                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} required />
+                    <span>Waktu Mulai Prepare</span>
+                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' required />
+                    <span>Waktu Selesai Prepare</span>
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' required />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Service</label>
-                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
-                    <span>Waktu Mulai</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' />
-                    <span>Waktu Selesai</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' />
+                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} required />
+                    <span>Waktu Mulai Service</span>
+                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' required />
+                    <span>Waktu Selesai Service</span>
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' required />
                 </div>
 
                 {/* Supervisor */}
                 <div>
                     <label className="block mb-2 font-medium">Supervisor</label>
-                    <select className="w-full border px-3 py-2 rounded" value={selectedSupervisor} onChange={handleSupervisorChange}>
-                        <option value="">-- Pilih Supervisor --</option>
+                    <select
+                        className="w-full border px-3 py-2 rounded"
+                        value={selectedSupervisor}
+                        onChange={handleSupervisorChange}
+                        disabled={event?.supervisor?.confirmation === 'bisa'}
+                    >
                         {karyawanData
-                            .filter(emp => emp.is_supervisor_candidate)
+                            .filter(emp => {
+                                const isCurrentSupervisor = emp._id === event?.supervisor?.id?._id;
+                                const isCandidate = emp.is_supervisor_candidate;
+
+                                // Cek apakah emp ini punya konfirmasi 'tidak bisa' di GUDANG
+                                const isRejectedInGudang = event?.gudang.some(g =>
+                                    g.user_id._id === emp._id && g.confirmation === 'tidak bisa'
+                                );
+
+                                // Cek apakah emp ini punya konfirmasi 'tidak bisa' di DAPUR
+                                const isRejectedInDapur = event?.dapur.some(d =>
+                                    d.penanggung_jawab.some(pj =>
+                                        pj.user_id._id === emp._id && pj.confirmation === 'tidak bisa'
+                                    )
+                                );
+
+                                // Cek apakah emp ini adalah supervisor sekarang dan konfirmasi tidak bisa
+                                const isRejectedSupervisor = isCurrentSupervisor && event?.supervisor?.confirmation === 'tidak bisa';
+
+                                const isTotallyRejected = isRejectedInGudang || isRejectedInDapur || isRejectedSupervisor;
+
+                                // Hanya tampilkan jika dia tidak menolak di peran manapun
+                                return !isTotallyRejected && (isCurrentSupervisor || isCandidate);
+                            })
                             .map(emp => (
-                                <option key={emp._id} value={emp.name}>{emp.name}</option>
+                                <option key={emp._id} value={emp.name}>
+                                    {emp.name}
+                                </option>
                             ))}
                     </select>
                 </div>
@@ -376,20 +503,30 @@ export default function UpdateEvent() {
                 {/* Gudang */}
                 <div>
                     <h2 className="text-xl font-semibold mb-2">Pilih Karyawan Gudang</h2>
-                    <div className="space-y-4">
+                    <input
+                        type="text"
+                        placeholder="Cari karyawan gudang..."
+                        className="w-full border px-3 py-2 rounded mb-4"
+                        value={searchGudang}
+                        onChange={e => setSearchGudang(e.target.value)}
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto border p-3 rounded">
                         {jdList.map(jdName => (
-                            <div key={jdName} className="mb-3">
+                            <div key={jdName}>
                                 <span className="block font-semibold mb-1">{jdName}</span>
-                                <div className="space-y-2 ml-4">
-                                    {karyawanData
-                                        .filter(emp =>
-                                            emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang') &&
-                                            emp._id !== selectedSupervisorId
-                                        )
+                                <div className="space-y-1 ml-2">
+                                    {filteredGudangData
+                                        .filter(emp => emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang'))
                                         .map(emp => {
-                                            const isChecked = selectedGudang.some(item =>
-                                                item.userId === emp._id && item.jobdesk === jdName
-                                            );
+                                            const konfirmasi = event?.gudang.find(g =>
+                                                g.user_id._id === emp._id &&
+                                                g.jobdesk.some(j => j.name === jdName)
+                                            )?.confirmation;
+
+                                            if (konfirmasi === 'tidak bisa') return null;
+
+                                            const isChecked = selectedGudang.some(item => item.userId === emp._id && item.jobdesk === jdName);
+
                                             return (
                                                 <label key={emp._id + jdName} className="flex items-center gap-2">
                                                     <input
@@ -397,8 +534,11 @@ export default function UpdateEvent() {
                                                         className="h-4 w-4 border-2 border-black"
                                                         checked={isChecked}
                                                         onChange={() => handleGudangToggle(emp._id, jdName)}
+                                                        disabled={konfirmasi === 'bisa'}
                                                     />
-                                                    {emp.name}
+                                                    <span className="truncate">
+                                                        {emp.name} {konfirmasi === 'bisa' && '(sudah konfirmasi)'}
+                                                    </span>
                                                 </label>
                                             );
                                         })}
@@ -407,6 +547,7 @@ export default function UpdateEvent() {
                         ))}
                     </div>
                 </div>
+
 
                 {/* Dapur */}
                 <div>
@@ -425,15 +566,6 @@ export default function UpdateEvent() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium">Stan</label>
-                                    <input
-                                        type="text"
-                                        className="w-full border px-3 py-2 rounded"
-                                        value={menu.stan}
-                                        onChange={(e) => handleChangeMenu(index, 'stan', e.target.value)}
-                                    />
-                                </div>
-                                <div>
                                     <label className="block text-sm font-medium">Jumlah Porsi</label>
                                     <input
                                         type="number"
@@ -449,39 +581,44 @@ export default function UpdateEvent() {
                                     <div className="space-y-1">
                                         {karyawanData
                                             .filter(emp => emp.jobdesk.some(jd => jd.category === 'dapur'))
-                                            .map(emp => (
-                                                <div key={emp._id} className="flex items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`dapur-${index}-${emp._id}`}
-                                                        checked={menu.penanggung_jawab.includes(emp.name)}
-                                                        onChange={(e) => {
-                                                            const updatedList = [...dapurList];
-                                                            if (e.target.checked) {
-                                                                updatedList[index].penanggung_jawab.push(emp.name);
-                                                            } else {
-                                                                updatedList[index].penanggung_jawab = updatedList[index].penanggung_jawab.filter(
-                                                                    n => n !== emp.name
-                                                                );
-                                                            }
-                                                            setDapurList(updatedList);
-                                                        }}
-                                                        className="h-4 w-4 border-2 border-black"
-                                                    />
-                                                    <label htmlFor={`dapur-${index}-${emp._id}`} className="text-sm">{emp.name}</label>
-                                                </div>
-                                            ))}
+                                            .map(emp => {
+                                                const disabledInfo = isDapurKaryawanDisabled(emp, index);
+                                                return (
+                                                    <div key={emp._id} className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`dapur-${index}-${emp._id}`}
+                                                            checked={menu.penanggung_jawab.includes(emp.name)}
+                                                            disabled={disabledInfo.disabled}
+                                                            onChange={(e) => {
+                                                                const updatedList = [...dapurList];
+                                                                if (e.target.checked) {
+                                                                    updatedList[index].penanggung_jawab.push(emp.name);
+                                                                } else {
+                                                                    updatedList[index].penanggung_jawab = updatedList[index].penanggung_jawab.filter(
+                                                                        n => n !== emp.name
+                                                                    );
+                                                                }
+                                                                setDapurList(updatedList);
+                                                            }}
+                                                            className={`h-4 w-4 border-2 ${disabledInfo.disabled ? "border-gray-400 bg-gray-200 cursor-not-allowed" : "border-black"}`}
+                                                        />
+                                                        <label
+                                                            htmlFor={`dapur-${index}-${emp._id}`}
+                                                            className={`text-sm ${disabledInfo.disabled ? "text-gray-400" : ""}`}
+                                                        >
+                                                            {emp.name}
+                                                            {disabledInfo.disabled && (
+                                                                <span className="ml-2 text-xs text-gray-500 italic">– {disabledInfo.reason}</span>
+                                                            )}
+                                                        </label>
+                                                    </div>
+                                                )
+                                            }
+                                            )}
                                     </div>
                                 </div>
-
-                                {/* Tombol Hapus Menu */}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveMenu(index)}
-                                    className="mt-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700"
-                                >
-                                    Hapus Menu
-                                </button>
+                                <button type="button" onClick={() => handleRemoveMenu(index)} className="mt-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700">Hapus Menu</button>
                             </div>
                         ))}
                     </div>
@@ -495,16 +632,32 @@ export default function UpdateEvent() {
                 <div className='mb-4'>
                     <button type='button' onClick={toggleDrawing} className='bg-green-500 text-white px-3 py-2 rounded hover:bg-green-700'>{isDrawing ? "Stop Menggambar Polygon" : "Gambar Polygon"}</button>
                     <button type="button" onClick={handleClearPolygon} className='bg-red-500 text-white px-3 py-2 rounded ml-2 hover:bg-red-700'>Hapus Polygon</button>
-                    <button type="button" onClick={toggleReverseGeocoding} className='bg-amber-500 text-white px-3 py-2 rounded ml-2 hover:bg-amber-700'>{isReverseGeocoding ? "Stop Reverse Geocoding" : "Aktifkan Reverse Geocoding"}</button>
                 </div>
-                <MapContainer center={[0, 0]} zoom={2} style={{ height: "400px", width: "100%" }} ref={mapRef} whenCreated={(mapInstance) => { mapRef.current = mapInstance }}>
-                    <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
-                    {selectedLocation && <Marker position={selectedLocation} icon={costumIcon} />}
-                    <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} isReverseGeocoding={isReverseGeocoding} handleReverseGeocode={handleReverseGeocode} />
-                    {polygon.length > 0 && <Polygon positions={polygon} pathOptions={{ color: 'blue' }} />}
-                </MapContainer>
+                {event && (
+                    <MapContainer
+                        center={[event.location.latitude, event.location.longitude]}
+                        zoom={20}
+                        style={{ height: "400px", width: "100%" }}
+                        ref={mapRef}
+                        whenCreated={(mapInstance) => {
+                            mapRef.current = mapInstance;
+                            mapInstance.setView([event.location.latitude, event.location.longitude], 16);
+                        }}
+                    >
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        {event.location.latitude && event.location.longitude && (
+                            <Marker position={[event.location.latitude, event.location.longitude]} icon={costumIcon} />
+                        )}
+                        <MapClickHandler
+                            isDrawing={isDrawing}
+                            addPoint={addPoint}
+                            handleReverseGeocode={handleReverseGeocode}
+                        />
+                        {polygon.length > 0 && <Polygon positions={polygon} pathOptions={{ color: "blue" }} />}
+                    </MapContainer>
+                )}
                 <div className="flex justify-end gap-3">
-                    <button type='submit' className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
+                    <button type='submit' onClick={handleSubmit} className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
                     <Link href={`/direktur/${slug}/events`}>
                         <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
                     </Link>
