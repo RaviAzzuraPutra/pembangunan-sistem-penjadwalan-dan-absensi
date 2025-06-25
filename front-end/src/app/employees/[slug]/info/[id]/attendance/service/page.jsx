@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import axios from "axios"
+import { loadModels, detectFace } from "../../../../../../../utils/faceDetection";
 
 export default function AttendanceService() {
     const videoRef = useRef(null)
@@ -70,13 +71,10 @@ export default function AttendanceService() {
         enableCamera()
 
         return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const tracks = videoRef.current.srcObject.getTracks?.();
-                if (tracks) {
-                    tracks.forEach(track => track.stop());
-                }
+            if (videoRef.current?.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(t => t.stop());
             }
-        }
+        };
     }, []);
 
     const handleCaptureFromCamera = () => {
@@ -115,7 +113,6 @@ export default function AttendanceService() {
                     router.push(`/employees/${slug}/info/${id}`);
                 });
             } catch (err) {
-                console.error("ERROR SAAT MENGIRIM DATA:", err);
                 let errorMsg = "Terjadi kesalahan saat mengirim data. Silakan coba lagi.";
                 if (err.response && err.response.data && err.response.data.message) {
                     errorMsg = err.response.data.message;
@@ -130,6 +127,17 @@ export default function AttendanceService() {
         }, "image/png")
 
     }
+
+    useEffect(() => {
+        let interval;
+        if (videoRef.current && canvasRef.current) {
+            interval = setInterval(() => {
+                detectFace(videoRef.current, canvasRef.current);
+            }, 200); // setiap 200ms
+        }
+
+        return () => clearInterval(interval);
+    }, [cameraActive]);
 
     return (
         <div className="min-h-screen p-5 flex flex-col space-y-7">
@@ -158,6 +166,7 @@ export default function AttendanceService() {
                         muted
                         className="w-full aspect-[3/4] object-cover"
                     />
+                    <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>
 
                 <div

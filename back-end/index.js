@@ -42,7 +42,7 @@ const startServer = async () => {
     StartEventStatusCron();
     AutoAbsentCron();
     AutoCantCron();
-    AutoCanCron();
+    // AutoCanCron();
 
     app.listen(port, () => {
         console.log(`Server berjalan di http://localhost:${port}`);

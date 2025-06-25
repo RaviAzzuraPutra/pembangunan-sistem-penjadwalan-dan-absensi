@@ -19,6 +19,7 @@ export default function InfoEventPageEmployees() {
     const [userPosition, setUserPosition] = useState(null);
     const router = useRouter();
     const [user, setUser] = useState(null);
+    const [isMonitoringTime, setIsMonitoringTime] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -38,8 +39,6 @@ export default function InfoEventPageEmployees() {
             try {
                 const response = await axios.get(`http://localhost:5001/event/eventInfo/${slug}/info/${id}`);
                 setEventInfo(response.data);
-                console.log("Event info:", response.data);
-                console.log("Polygon lokasi:", response.data?.event?.location?.polygon);
             } catch (error) {
                 console.error("Gagal memuat detail acara:", error);
             } finally {
@@ -53,7 +52,7 @@ export default function InfoEventPageEmployees() {
     useEffect(() => {
         if (!eventInfo) return;
 
-        const polygonCoords = eventInfo.event.location.polygon;
+        const polygonCoords = eventInfo.event.location.polygon.map(coord => [coord[1], coord[0]]);
 
         if (!polygonCoords || !Array.isArray(polygonCoords) || polygonCoords.length === 0) {
             setInsideArea(false);
@@ -70,14 +69,16 @@ export default function InfoEventPageEmployees() {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const userLocation = turf.point([
-                        position.coords.latitude,
-                        position.coords.longitude
+                        position.coords.longitude,
+                        position.coords.latitude
                     ]);
 
                     const eventPolygon = turf.polygon([polygonCoords]);
                     const isInside = turf.booleanPointInPolygon(userLocation, eventPolygon);
                     setInsideArea(isInside);
                     setUserPosition(position);
+                    console.log("User position:", position);
+                    console.log("Is inside area:", isInside);
                 },
                 (error) => {
                     switch (error.code) {
@@ -139,12 +140,20 @@ export default function InfoEventPageEmployees() {
             const serviceStart = new Date(`${event.date_service.split("T")[0]}T${event.time_start_service}:00`);
             const serviceEnd = new Date(`${event.date_service.split("T")[0]}T${event.time_end_service}:00`);
 
+            const monitoringStart = prepareStart;
+            const monitoringEnd = serviceEnd;
+
+            setIsMonitoringTime(now >= monitoringStart && now <= monitoringEnd);
+
 
             setIsPrepareTime(now >= prepareStart && now <= prepareEnd);
             setIsServiceTime(now >= serviceStart && now <= serviceEnd);
         };
 
         checkAbsenceTime();
+
+        const interval = setInterval(checkAbsenceTime, 60000);
+        return () => clearInterval(interval);
     }, [eventInfo]);
 
     const handleAbsensi = (tahap) => {
@@ -254,11 +263,9 @@ export default function InfoEventPageEmployees() {
                             </button>
 
                         )}
-                        {role === 'supervisor' && (
-                            <Link href={`/employees/${slug}/info/${id}/monitoring`}>
-                                <button className="w-full bg-yellow-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-yellow-700 mt-3">
-                                    MONITORING
-                                </button>
+                        {userPosition && role === 'supervisor' && (
+                            <Link href={`/employees/${slug}/info/${id}/monitoring`} className="w-full bg-yellow-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-yellow-700 mt-3" disabled={!isMonitoringTime}>
+                                MONITORING
                             </Link>
                         )}
                     </div>

@@ -53,7 +53,8 @@ export default function Monitoring() {
                         absensiMap[userId] = {
                             prepare: "-",
                             service: "-",
-                            location: null,
+                            prepareLocation: null,
+                            serviceLocation: null,
                             prepareTime: null,
                             serviceTime: null,
                         };
@@ -62,9 +63,11 @@ export default function Monitoring() {
                     if (item.tahap === 'prepare') {
                         absensiMap[userId].prepare = item.status === 'gagal' ? "❌" : "✅";
                         absensiMap[userId].prepareTime = item.timestamp;
+                        absensiMap[userId].prepareLocation = item.location;
                     } else if (item.tahap === 'service') {
                         absensiMap[userId].service = item.status === 'gagal' ? "❌" : "✅";
                         absensiMap[userId].serviceTime = item.timestamp;
+                        absensiMap[userId].serviceLocation = item.location;
                     }
 
                     if (!absensiMap[userId].location && item.location) {
@@ -78,7 +81,10 @@ export default function Monitoring() {
                     name: user.name || "-",
                     prepare: absensiMap[user._id]?.prepare || "-",
                     service: absensiMap[user._id]?.service || "-",
-                    location: absensiMap[user._id]?.location || null,
+                    prepareLocation: absensiMap[user._id]?.prepareLocation || null,
+                    serviceLocation: absensiMap[user._id]?.serviceLocation || null,
+                    prepareTime: absensiMap[user._id]?.prepareTime || null,
+                    serviceTime: absensiMap[user._id]?.serviceTime || null,
                 }));
 
                 const supervisorId = event.supervisorId;
@@ -114,13 +120,14 @@ export default function Monitoring() {
         }
     }
 
-    const showLocationMap = (location) => {
+    const showLocationMap = (userId, location, timestamp) => {
         if (!location) {
             Swal.fire({
                 icon: "error",
                 title: "Lokasi Tidak Tersedia",
                 text: "Lokasi untuk karyawan ini tidak tersedia.",
             });
+            return
         }
 
         const div = document.createElement('div');
@@ -133,10 +140,12 @@ export default function Monitoring() {
             ? new Date(timestamp).toLocaleString('id-ID')
             : '-';
 
+        // Cari nama berdasarkan userId
+        const user = absensi.find(row => row._id.toString() === userId.toString());
+        const userName = user ? user.name : 'Tidak Diketahui';
+
         Swal.fire({
-            title: `Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
-                ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
-                ` Waktu: ${waktuFormatted}`,
+            title: `Absensi untuk ${userName} - Waktu: ${waktuFormatted}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -169,7 +178,7 @@ export default function Monitoring() {
                 row.prepare === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, row.prepareTime)}
+                        onClick={() => showLocationMap(row._id, row.prepareLocation, row.prepareTime)}
                     >
                         ✅
                     </span>
@@ -183,7 +192,7 @@ export default function Monitoring() {
                 row.service === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, row.serviceTime)}
+                        onClick={() => showLocationMap(row._id, row.serviceLocation, row.serviceTime)}
                     >
                         ✅
                     </span>

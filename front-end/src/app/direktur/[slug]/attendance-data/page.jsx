@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useState } from "react";
-import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import DataTable from 'react-data-table-component';
 import axios from "axios";
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 export default function AttendanceData() {
     const params = useParams();
@@ -47,12 +48,12 @@ export default function AttendanceData() {
         },
         {
             name: 'Prepare',
-            selector: row => new Date(row.date_prepare).toLocaleDateString('id-ID'),
+            selector: row => format(new Date(row.date_prepare), 'dd MMM yyyy', { locale: id }),
             wrap: true,
         },
         {
             name: 'Service',
-            selector: row => new Date(row.date_service).toLocaleDateString('id-ID'),
+            selector: row => format(new Date(row.date_service), 'dd MMM yyyy', { locale: id }),
             wrap: true,
         },
         {

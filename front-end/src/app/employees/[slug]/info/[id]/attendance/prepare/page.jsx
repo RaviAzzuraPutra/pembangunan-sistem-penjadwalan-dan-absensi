@@ -6,6 +6,9 @@ import Link from "next/link"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import axios from "axios"
+import { loadModels, detectFace, analyzeFace } from "../../../../../../../utils/faceDetection";
+import * as faceapi from 'face-api.js';
+
 
 export default function AttendancePrepare() {
     const videoRef = useRef(null)
@@ -13,6 +16,10 @@ export default function AttendancePrepare() {
     const { slug, id } = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const canvasRef = useRef(null);
+    const [showValidationText, setShowValidationText] = useState(false);
+    const [challengeText, setChallengeText] = useState('');
+
 
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
@@ -57,6 +64,7 @@ export default function AttendancePrepare() {
     useEffect(() => {
         const enableCamera = async () => {
             try {
+                await loadModels();
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
@@ -70,17 +78,65 @@ export default function AttendancePrepare() {
         enableCamera()
 
         return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const tracks = videoRef.current.srcObject.getTracks?.();
-                if (tracks) {
-                    tracks.forEach(track => track.stop());
-                }
+            if (videoRef.current?.srcObject) {
+                videoRef.current.srcObject.getTracks().forEach(t => t.stop());
             }
-        }
+        };
     }, []);
 
-    const handleCaptureFromCamera = () => {
+    const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
+
+        setShowValidationText(true);
+        setChallengeText('');
+
+        let challengePassed = false;
+        const descriptors = [];
+
+        // Random challenge direction
+        const directions = ['left', 'right'];
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const challengeMessage = randomDir === 'left'
+            ? 'Gerakkan kepala ke KIRI'
+            : 'Gerakkan kepala ke KANAN';
+
+        setChallengeText(challengeMessage);
+        setShowValidationText(true);
+
+        await new Promise(r => setTimeout(r, 500));
+
+        const videoWidth = videoRef.current.videoWidth;
+
+        const validateLoop = async () => {
+            for (let i = 0; i < 10; i++) {
+                const result = await analyzeFace(videoRef.current);
+                if (!result) continue;
+
+                descriptors.push(result.descriptor);
+
+                const nose = result.nose;
+                const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
+
+                if (randomDir === 'left' && noseX < videoWidth / 2 - 30) challengePassed = true;
+                if (randomDir === 'right' && noseX > videoWidth / 2 + 30) challengePassed = true;
+                console.log(`NoseX: ${noseX}, Midpoint: ${videoWidth / 2}`);
+
+                await new Promise(r => setTimeout(r, 401));
+            }
+        };
+
+        await validateLoop();
+
+        setShowValidationText(false);
+
+        if (!challengePassed) {
+            Swal.fire({
+                icon: "error",
+                title: "Validasi Gagal!!!",
+                text: "Gerakan tidak sesuai tantangan."
+            });
+            return;
+        }
 
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth;
@@ -115,7 +171,6 @@ export default function AttendancePrepare() {
                     router.push(`/employees/${slug}/info/${id}`);
                 });
             } catch (err) {
-                console.error("ERROR SAAT MENGIRIM DATA:", err);
                 let errorMsg = "Terjadi kesalahan saat mengirim data. Silakan coba lagi.";
                 if (err.response && err.response.data && err.response.data.message) {
                     errorMsg = err.response.data.message;
@@ -130,6 +185,17 @@ export default function AttendancePrepare() {
         }, "image/png")
 
     }
+
+    useEffect(() => {
+        let interval;
+        if (videoRef.current && canvasRef.current) {
+            interval = setInterval(() => {
+                detectFace(videoRef.current, canvasRef.current);
+            }, 200); // setiap 200ms
+        }
+
+        return () => clearInterval(interval);
+    }, [cameraActive]);
 
     return (
         <div className="min-h-screen p-5 flex flex-col space-y-7">
@@ -158,6 +224,12 @@ export default function AttendancePrepare() {
                         muted
                         className="w-full aspect-[3/4] object-cover"
                     />
+
+                    {showValidationText && (
+                        <p className="text-center font-semibold text-black">{challengeText}</p>
+                    )}
+
+                    <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>
 
                 <div

@@ -17,7 +17,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const response = await axios.post("http://localhost:5001/auth/login", {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
                 ID_Login: IDlogin,
                 password: password,
             }, {

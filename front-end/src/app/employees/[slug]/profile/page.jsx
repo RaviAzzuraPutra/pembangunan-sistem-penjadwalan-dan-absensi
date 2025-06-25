@@ -190,10 +190,8 @@ export default function Profile() {
                         <button className="bg-pink-500 text-white py-1 px-1 text-sm rounded hover:bg-pink-700" onClick={handleChangePhone}>
                             Ubah No Telepon
                         </button>
-                        <Link href={`/employees/${slug}/profile/change-face`}>
-                            <button className="bg-emerald-500 text-white py-1 px-1 text-sm rounded hover:bg-emerald-700">
-                                Ubah Data Wajah
-                            </button>
+                        <Link href={`/employees/${slug}/profile/change-face`} className="bg-emerald-500 text-white py-1 px-1 text-sm rounded hover:bg-emerald-700">
+                            Ubah Data Wajah
                         </Link>
                     </div>
                 </div>

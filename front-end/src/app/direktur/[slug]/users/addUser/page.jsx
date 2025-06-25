@@ -195,8 +195,8 @@ export default function AddUser() {
                 </div>
                 <div className="flex justify-end gap-3">
                     <button className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
-                    <Link href={`/direktur/${slug}/users`}>
-                        <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
+                    <Link href={`/direktur/${slug}/users`} className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">
+                        KEMBALI
                     </Link>
                 </div>
             </form>

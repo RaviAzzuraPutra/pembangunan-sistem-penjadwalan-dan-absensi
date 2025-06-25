@@ -74,7 +74,14 @@ exports.createEvent = async (req, res) => {
                 if (batch.length === 10 || isLast) {
                     for (const user of batch) {
                         const phoneFormatted = user.phone.replace(/^0/, "+62");
-                        const message = `Hai ${user.name}, ada event baru yang perlu kamu lihat. Silakan cek di aplikasi.`;
+                        const message = `Hai ${user.name}, kamu mendapatkan tugas baru di event *${newEvent.name}*\n\n` +
+                            `📛 Nama: ${newEvent.name}\n` +
+                            `📅 Prepare: ${newEvent.date_prepare.toLocaleDateString()}\n` +
+                            `📅 Service:  ${newEvent.date_service.toLocaleDateString()}\n` +
+                            `📍 Lokasi: ${newEvent.location?.name || '-'}\n\n` +
+                            `Cek dan konfirmasi sekarang di aplikasi 👇:\n` +
+                            ` http://localhost:3000 \n` +
+                            `Jika belum, buka Chrome dan pilih opsi "Tambahkan ke layar utama" untuk membuatnya mirip dengan aplikasi.😉`;
                         try {
                             await sendMessage(phoneFormatted, message);
                         } catch (err) {
@@ -165,23 +172,60 @@ exports.getEventById = async (req, res) => {
 exports.updateEvent = async (req, res) => {
     try {
         const { id } = req.params;
+        const updateData = req.body;
 
+        // Ambil data event lama
         const oldEvent = await Event.findById(id);
         if (!oldEvent) {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
         }
 
-        let updatedEvent = await Event.findByIdAndUpdate(id, req.body, { new: true });
-        if (!updatedEvent) {
-            return res.status(404).json({ message: 'Gagal update event' });
+        // Logic Supervisor
+        let supervisorPayload;
+        const supervisorBaruId = updateData.supervisor.id;
+
+        if (oldEvent.supervisor.id.toString() === supervisorBaruId) {
+            // Supervisor tidak diganti → pertahankan confirmation lama
+            supervisorPayload = {
+                id: supervisorBaruId,
+                confirmation: oldEvent.supervisor.confirmation
+            };
+        } else {
+            // Supervisor diganti
+            // Cari apakah orang ini sebelumnya masuk di gudang & sudah konfirmasi bisa
+            const gudangData = oldEvent.gudang.find(g => g.user_id.toString() === supervisorBaruId);
+            if (gudangData?.confirmation === 'bisa') {
+                supervisorPayload = { id: supervisorBaruId, confirmation: 'bisa' };
+            } else {
+                supervisorPayload = { id: supervisorBaruId, confirmation: 'menunggu' };
+            }
         }
 
-        // Pertahankan konfirmasi supervisor
-        if (
-            oldEvent.supervisor?.user_id?.toString() === updatedEvent.supervisor?.user_id?.toString() &&
-            oldEvent.supervisor?.confirmation
-        ) {
-            updatedEvent.supervisor.confirmation = oldEvent.supervisor.confirmation;
+
+        const slug = slugify(updateData.name, { lower: true, strict: true });
+
+        // Build payload baru seluruhnya
+        const updatedPayload = {
+            name: updateData.name,
+            slug: slug,
+            porsi: updateData.porsi,
+            date_prepare: updateData.date_prepare,
+            time_start_prepare: updateData.time_start_prepare,
+            time_end_prepare: updateData.time_end_prepare,
+            date_service: updateData.date_service,
+            time_start_service: updateData.time_start_service,
+            time_end_service: updateData.time_end_service,
+            location: updateData.location,
+            supervisor: supervisorPayload,
+            gudang: updateData.gudang,
+            dapur: updateData.dapur
+        };
+
+        // Update langsung
+        const updatedEvent = await Event.findByIdAndUpdate(id, updatedPayload, { new: true });
+
+        if (!updatedEvent) {
+            return res.status(404).json({ message: 'Gagal update event' });
         }
 
         // Pertahankan konfirmasi gudang
@@ -299,7 +343,18 @@ exports.updateEvent = async (req, res) => {
             if (!user || !user.phone) continue;
 
             const phoneFormatted = user.phone.replace(/^0/, '+62');
-            await sendMessage(phoneFormatted, `Hai ${user.name}, ada event baru yang perlu kamu lihat. Silakan cek di aplikasi.`);
+            const message = `Hai ${user.name}, kamu mendapatkan tugas baru di event *${updatedEvent.name}*\n\n` +
+                `📛 Nama: ${updatedEvent.name}\n` +
+                `📅 Prepare: ${updatedEvent.date_prepare.toLocaleDateString()}\n` +
+                `📅 Service:  ${updatedEvent.date_service.toLocaleDateString()}\n` +
+                `📍 Lokasi: ${updatedEvent.location?.name || '-'}\n\n` +
+                `Cek dan konfirmasi sekarang di aplikasi 👇:\n` +
+                ` http://localhost:3000 \n` +
+                `Jika belum, buka Chrome dan pilih opsi "Tambahkan ke layar utama" untuk membuatnya mirip dengan aplikasi.😉`;
+            await sendMessage(phoneFormatted, message)
+                .catch(err => {
+                    console.error(`Gagal kirim pesan ke ${userId}:`, err);
+                });
         }
 
         res.status(200).json({
@@ -321,7 +376,8 @@ exports.deleteEvent = async (req, res) => {
         // Ambil data event dulu dengan populate
         const event = await Event.findById(id)
             .populate('gudang.user_id', 'nama no_telp')
-            .populate('dapur.penanggung_jawab.user_id', 'nama no_telp');
+            .populate('dapur.penanggung_jawab.user_id', 'nama no_telp')
+            .populate('supervisor.id', 'nama no_telp');
 
         if (!event) {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
@@ -332,29 +388,63 @@ exports.deleteEvent = async (req, res) => {
         const tanggalPrepare = normalizeDate(new Date(event.date_prepare));
         const tanggalService = normalizeDate(new Date(event.date_service));
 
-        // Kumpulkan semua user_id dari gudang dan dapur
         const userIds = new Set();
+        // Gabungkan semua user dari gudang dan dapur
+        const allUserIds = new Set();
 
-        // dari gudang
+        if (event.supervisor?.id?._id) {
+            allUserIds.add(event.supervisor.id._id.toString());
+        }
+
         event.gudang.forEach(g => {
             if (g.user_id?._id) {
-                userIds.add(g.user_id._id.toString());
+                allUserIds.add(g.user_id._id.toString());
             }
         });
 
-        // dari dapur
         event.dapur.forEach(menu => {
             menu.penanggung_jawab.forEach(pj => {
                 if (pj.user_id?._id) {
-                    userIds.add(pj.user_id._id.toString());
+                    allUserIds.add(pj.user_id._id.toString());
                 }
             });
         });
 
-        // Debug: tampilkan user dan tanggal yang mau dihapus
-        console.log('User IDs:', Array.from(userIds));
-        console.log('Tanggal Prepare:', tanggalPrepare);
-        console.log('Tanggal Service:', tanggalService);
+        if (event.status === "terjadwal") {
+            const users = await User.find({ _id: { $in: [...allUserIds] } });
+
+            let batch = [];
+            for (let i = 0; i < users.length; i++) {
+                batch.push(users[i]);
+
+                const isLast = i === users.length - 1;
+                if (batch.length === 10 || isLast) {
+                    for (const user of batch) {
+                        const phoneFormatted = user.phone.replace(/^0/, "+62");
+                        const msg = `* [Pembatalan Event] *\n` +
+                            `Hai ${user.name}, berikut informasi pembatalan acara:\n\n` +
+                            `📛 Nama: ${event.name}\n` +
+                            `📅 Prepare: ${tanggalPrepare.toLocaleDateString('id-ID')}\n` +
+                            `📅 Service: ${tanggalService.toLocaleDateString('id-ID')}\n` +
+                            `📍 Lokasi: ${event.location?.name || '-'}\n\n` +
+                            `Mohon perhatian, event ini telah dibatalkan.`;
+
+                        try {
+                            await sendMessage(phoneFormatted, msg);
+                        } catch (err) {
+                            console.error(`❌ Gagal kirim ke ${user.name} (${phoneFormatted})`, err);
+                        }
+                    }
+
+                    batch = [];
+
+                    if (!isLast) {
+                        console.log("Menunggu 2 menit sebelum batch selanjutnya...");
+                        await new Promise(resolve => setTimeout(resolve, 120000));
+                    }
+                }
+            }
+        }
 
         // Hapus semua Unavailability yang cocok (gunakan rentang waktu harian)
         await Unavailability.deleteMany({
@@ -379,29 +469,6 @@ exports.deleteEvent = async (req, res) => {
 
         // Hapus event
         await event.deleteOne();
-
-        // Kirim notifikasi pembatalan
-        const pesan = `*[Pembatalan Event]*\n` +
-            `Nama Acara: ${event.name}\n` +
-            `Tanggal Prepare: ${tanggalPrepare.toLocaleDateString('id-ID')}\n` +
-            `Tanggal Service: ${tanggalService.toLocaleDateString('id-ID')}\n` +
-            `Lokasi: ${event.location?.name || '-'}\n\n` +
-            `Mohon perhatian, event ini telah dibatalkan.`;
-
-        // Kirim ke semua user yang punya no_telp
-        event.gudang.forEach(g => {
-            if (g.user_id?.no_telp) {
-                sendMessage(g.user_id.no_telp, pesan);
-            }
-        });
-
-        event.dapur.forEach(menu => {
-            menu.penanggung_jawab.forEach(pj => {
-                if (pj.user_id?.no_telp) {
-                    sendMessage(pj.user_id.no_telp, pesan);
-                }
-            });
-        });
 
         return res.status(200).json({
             success: true,
@@ -465,34 +532,32 @@ exports.confirm = async (req, res) => {
         const tanggal = kategoriLower === "gudang" ? event.date_prepare : event.date_service;
 
         if (status === "tidak bisa") {
-            await Unavailability.create({ user_id: userId, date: tanggal });
+            // Cek apakah sudah ada Unavailability sebelumnya
+            const existingUnavailability = await Unavailability.findOne({ user_id: userId, date: tanggal });
 
-            if (kategoriLower === 'gudang') {
-                const emp = event.gudang.find(e => e.user_id.toString() === userId);
-                if (emp) emp.confirmation = 'tidak bisa';
-            } else if (kategoriLower === 'dapur') {
-                const menuObj = event.dapur.find(d => d.menu === menu);
-                if (menuObj) {
-                    const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
-                    if (pj) pj.confirmation = 'tidak bisa';
-                }
-            } else if (kategoriLower === 'supervisor') {
-                event.supervisor.confirmation = 'tidak bisa';
+            if (!existingUnavailability) {
+                await Unavailability.create({ user_id: userId, date: tanggal });
             }
+        }
+
+        // Update konfirmasi di event
+        if (kategoriLower === 'gudang') {
+            const emp = event.gudang.find(e => e.user_id.toString() === userId);
+            if (!emp) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
+            emp.confirmation = status;
+        } else if (kategoriLower === 'dapur') {
+            const menuObj = event.dapur.find(d => d.menu === menu);
+            if (!menuObj) return res.status(404).json({ message: 'Menu dapur tidak ditemukan' });
+            const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
+            if (!pj) return res.status(404).json({ message: 'Penanggung jawab tidak ditemukan' });
+            pj.confirmation = status;
+        } else if (kategoriLower === 'supervisor') {
+            if (!event.supervisor || event.supervisor.id.toString() !== userId) {
+                return res.status(404).json({ message: 'Supervisor tidak sesuai' });
+            }
+            event.supervisor.confirmation = status;
         } else {
-            if (kategoriLower === 'gudang') {
-                const emp = event.gudang.find(e => e.user_id.toString() === userId);
-                if (!emp) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
-                emp.confirmation = status;
-            } else if (kategoriLower === 'dapur') {
-                const menuObj = event.dapur.find(d => d.menu === menu);
-                if (!menuObj) return res.status(404).json({ message: 'Menu dapur tidak ditemukan' });
-                const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
-                if (!pj) return res.status(404).json({ message: 'Penanggung jawab tidak ditemukan' });
-                pj.confirmation = status;
-            } else if (kategoriLower === 'supervisor') {
-                event.supervisor.confirmation = status;
-            }
+            return res.status(400).json({ message: 'Kategori tidak valid' });
         }
 
         await event.save();
@@ -503,6 +568,7 @@ exports.confirm = async (req, res) => {
         res.status(500).json({ message: 'Gagal konfirmasi kehadiran' });
     }
 };
+
 
 
 exports.getAvailableEmployees = async (req, res) => {
@@ -670,7 +736,7 @@ exports.getEventInfoForEmployee = async (req, res) => {
                         role = 'dapur';
                         jobdeskNames = [{
                             name: d.menu,
-                            description: `Stan: ${d.stan}, Porsi: ${d.jumlah_porsi}, Penanggung Jawab: ${pj.user_id.name}`
+                            description: `Stan: ${d.stan}, Porsi: ${d.jumlah_porsi}, Penanggung Jawab: ${pj.user_id.name} `
                         }];
                         break;
                     }
@@ -702,7 +768,7 @@ exports.getEventInfoForEmployee = async (req, res) => {
         for (const d of event.dapur) {
             for (const pj of d.penanggung_jawab) {
                 if (pj.user_id) {
-                    participantData.push({ name: pj.user_id.name, jobdesk: `PJ Menu: ${d.menu}` });
+                    participantData.push({ name: pj.user_id.name, jobdesk: `PJ Menu: ${d.menu} ` });
                 }
             }
         }

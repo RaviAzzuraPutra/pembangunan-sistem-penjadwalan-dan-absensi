@@ -412,7 +412,7 @@ export default function AddEvent() {
                     <span>Waktu Mulai Service</span>
                     <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' required />
                     <span>Waktu Selesai Service</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' requied />
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' required />
                 </div>
 
                 {/* Supervisor */}
@@ -576,8 +576,8 @@ export default function AddEvent() {
                 </MapContainer>
                 <div className="flex justify-end gap-3">
                     <button type='submit' onClick={handleSubmit} className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
-                    <Link href={`/direktur/${slug}/events`}>
-                        <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
+                    <Link href={`/direktur/${slug}/events`} className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">
+                        KEMBALI
                     </Link>
                 </div>
             </div>

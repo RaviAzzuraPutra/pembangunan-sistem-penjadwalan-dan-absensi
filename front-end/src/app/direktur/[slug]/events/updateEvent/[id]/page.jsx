@@ -71,6 +71,12 @@ export default function UpdateEvent() {
             const event = res.data.data;
             setEvent(event);
 
+            if (event.supervisor?.confirmation !== 'tidak bisa') {
+                setSelectedSupervisor(event.supervisor?.id?.name);
+            } else {
+                setSelectedSupervisor("");
+            }
+
             // Preload minimal
             setNamaAcara(event.name);
             setPorsi(event.porsi);
@@ -139,7 +145,6 @@ export default function UpdateEvent() {
                 if (res.data.success) {
                     setAllKaryawan(res.data.data);
                     setKaryawanData(res.data.data);
-                    console.log('Initial karyawan:', res.data.data);
                 }
             } catch (err) {
                 console.error('Gagal fetch semua karyawan:', err);
@@ -158,23 +163,6 @@ export default function UpdateEvent() {
             }
         });
     };
-
-    const fetchAvailableEmployees = async () => {
-        if (!prepareDate && !serviceDate) return;
-
-        try {
-            const { data: { data: available } } = await axios.get(
-                `http://localhost:5001/event/available-employees?date_prepare=${prepareDate}&date_service=${serviceDate}`
-            );
-            const filtered = allKaryawan.filter(k =>
-                available.some(a => a._id === k._id)
-            );
-            setKaryawanData(filtered);
-            console.log('Karyawan tersedia di kedua tanggal:', available);
-        } catch (error) {
-            console.error('Error fetch available employees:', error);
-        }
-    }
 
     const handleSearch = async () => {
         try {
@@ -215,7 +203,21 @@ export default function UpdateEvent() {
     const toggleDrawing = () => { setIsDrawing((prev) => !prev) }
 
     const handleSupervisorChange = (e) => {
-        setSelectedSupervisor(e.target.value);
+        const selectedName = e.target.value;
+        setSelectedSupervisor(selectedName);
+
+        // Cari userId supervisor yang dipilih
+        const supervisorCandidate = karyawanData.find(emp => emp.name === selectedName);
+        if (!supervisorCandidate) return;
+
+        // Cek apakah dia sudah ada di daftar gudang
+        const isInGudang = selectedGudang.some(item => item.userId === supervisorCandidate._id);
+        if (isInGudang) {
+            // Hapus otomatis dari gudang jika pindah ke supervisor
+            setSelectedGudang(prev =>
+                prev.filter(item => item.userId !== supervisorCandidate._id)
+            );
+        }
     }
 
     const handleAddMenu = () => {
@@ -380,10 +382,14 @@ export default function UpdateEvent() {
     ));
 
     const filteredGudangData = karyawanData.filter(emp => {
-        const gudangEventData = event?.gudang.find(g => g.user_id._id === emp._id);
-        const konfirmasi = gudangEventData?.confirmation;
+        // Cek apakah dia supervisor lama yang tidak bisa
+        const isSupervisorLama = emp._id === event?.supervisor?.id?._id;
+        const konfirmasiSupervisor = event?.supervisor?.confirmation;
+        if (isSupervisorLama && konfirmasiSupervisor === 'tidak bisa') return false;
 
-        if (konfirmasi === 'tidak bisa') return false;
+        const gudangEventData = event?.gudang.find(g => g.user_id._id === emp._id);
+        const konfirmasiGudang = gudangEventData?.confirmation;
+        if (konfirmasiGudang === 'tidak bisa') return false;
 
         return emp.jobdesk.some(jd => jd.category === 'gudang') &&
             emp._id !== selectedSupervisorId &&
@@ -419,9 +425,6 @@ export default function UpdateEvent() {
 
         return { disabled: false };
     };
-
-
-
 
 
     return (
@@ -469,28 +472,12 @@ export default function UpdateEvent() {
                     >
                         {karyawanData
                             .filter(emp => {
-                                const isCurrentSupervisor = emp._id === event?.supervisor?.id?._id;
-                                const isCandidate = emp.is_supervisor_candidate;
+                                const isSupervisorLama = emp._id === event?.supervisor?.id?._id;
+                                const konfirmasiSupervisor = event?.supervisor?.confirmation;
+                                if (isSupervisorLama && konfirmasiSupervisor === 'tidak bisa') return false;
 
-                                // Cek apakah emp ini punya konfirmasi 'tidak bisa' di GUDANG
-                                const isRejectedInGudang = event?.gudang.some(g =>
-                                    g.user_id._id === emp._id && g.confirmation === 'tidak bisa'
-                                );
-
-                                // Cek apakah emp ini punya konfirmasi 'tidak bisa' di DAPUR
-                                const isRejectedInDapur = event?.dapur.some(d =>
-                                    d.penanggung_jawab.some(pj =>
-                                        pj.user_id._id === emp._id && pj.confirmation === 'tidak bisa'
-                                    )
-                                );
-
-                                // Cek apakah emp ini adalah supervisor sekarang dan konfirmasi tidak bisa
-                                const isRejectedSupervisor = isCurrentSupervisor && event?.supervisor?.confirmation === 'tidak bisa';
-
-                                const isTotallyRejected = isRejectedInGudang || isRejectedInDapur || isRejectedSupervisor;
-
-                                // Hanya tampilkan jika dia tidak menolak di peran manapun
-                                return !isTotallyRejected && (isCurrentSupervisor || isCandidate);
+                                // Tampilkan hanya kandidat supervisor
+                                return emp.is_supervisor_candidate;
                             })
                             .map(emp => (
                                 <option key={emp._id} value={emp.name}>
@@ -658,8 +645,8 @@ export default function UpdateEvent() {
                 )}
                 <div className="flex justify-end gap-3">
                     <button type='submit' onClick={handleSubmit} className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
-                    <Link href={`/direktur/${slug}/events`}>
-                        <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
+                    <Link href={`/direktur/${slug}/events`} className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">
+                        KEMBALI
                     </Link>
                 </div>
             </div>

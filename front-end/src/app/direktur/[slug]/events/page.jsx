@@ -1,11 +1,13 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Swal from "sweetalert2";
 import { useParams, useSearchParams } from "next/navigation";
 import DataTable from 'react-data-table-component';
 import axios from "axios";
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 export default function Events() {
     const searchParams = useSearchParams();
@@ -15,7 +17,7 @@ export default function Events() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filteredEvent, setFilteredEvent] = useState([]);
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         const success = searchParams.get('success');
         const message = searchParams.get('message');
 
@@ -100,12 +102,12 @@ export default function Events() {
         },
         {
             name: 'Prepare',
-            selector: row => new Date(row.date_prepare).toLocaleDateString('id-ID'),
+            selector: row => row.date_prepare ? format(new Date(row.date_prepare), 'dd MMM yyyy', { locale: id }) : "-",
             wrap: true,
         },
         {
             name: 'Service',
-            selector: row => new Date(row.date_service).toLocaleDateString('id-ID'),
+            selector: row => row.date_service ? format(new Date(row.date_service), 'dd MMM yyyy', { locale: id }) : "-",
             wrap: true,
         },
         {
@@ -159,8 +161,8 @@ export default function Events() {
             <h1 className="text-3xl font-bold">Manajemen Acara</h1>
             <hr className="border-gray-300" />
             <div className="flex justify-between items-center">
-                <Link href={`/direktur/${slug}/events/addEvent`}>
-                    <button className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">+ TAMBAH ACARA</button>
+                <Link href={`/direktur/${slug}/events/addEvent`} className="bg-stone-600 text-white px-4 py-2 rounded shadow hover:bg-stone-800">
+                    + TAMBAH ACARA
                 </Link>
                 <input
                     type="text"
@@ -170,43 +172,45 @@ export default function Events() {
                     className="mt-5 w-full md:w-1/2 border border-gray-300 rounded text-lg"
                 />
             </div>
-            <DataTable
-                columns={columns}
-                data={filteredEvent}
-                pagination
-                paginationPerPage={5}
-                highlightOnHover
-                customStyles={{
-                    table: {
-                        style: {
-                            width: '100%',
+            {filteredEvent.length > 0 && (
+                <DataTable
+                    columns={columns}
+                    data={filteredEvent}
+                    pagination
+                    paginationPerPage={5}
+                    highlightOnHover
+                    customStyles={{
+                        table: {
+                            style: {
+                                width: '100%',
+                            }
+                        },
+                        headCells: {
+                            style: {
+                                fontSize: '17px',
+                                fontWeight: 'bold',
+                                backgroundColor: '#f5f5f5',
+                                padding: '4px 6px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }
+                        },
+                        rows: {
+                            style: {
+                                fontSize: '15px',
+                                minHeight: '36px'
+                            }
+                        },
+                        cells: {
+                            style: {
+                                padding: '4px 6px',
+                                wordBreak: 'break-word',
+                            }
                         }
-                    },
-                    headCells: {
-                        style: {
-                            fontSize: '17px',
-                            fontWeight: 'bold',
-                            backgroundColor: '#f5f5f5',
-                            padding: '4px 6px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                        }
-                    },
-                    rows: {
-                        style: {
-                            fontSize: '15px',
-                            minHeight: '36px'
-                        }
-                    },
-                    cells: {
-                        style: {
-                            padding: '4px 6px',
-                            wordBreak: 'break-word',
-                        }
-                    }
-                }}
-            />
+                    }}
+                />
+            )}
         </div>
     );
 }

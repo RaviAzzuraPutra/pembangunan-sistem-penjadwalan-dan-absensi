@@ -216,8 +216,8 @@ export default function AttendanceDetailData() {
                 }}
             />
             <div className="flex justify-end gap-3">
-                <Link href={`/direktur/${slug}/attendance-data`}>
-                    <button className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">KEMBALI</button>
+                <Link href={`/direktur/${slug}/attendance-data`} className="bg-slate-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-slate-700">
+                    KEMBALI
                 </Link>
             </div>
         </div>
