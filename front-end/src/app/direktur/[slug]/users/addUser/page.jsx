@@ -22,7 +22,7 @@ export default function AddUser() {
     useEffect(() => {
         const fetchJobdesk = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/jobdesk");
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/jobdesk`);
                 setJobdesk(response.data.data);
             } catch (error) {
                 console.error("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
@@ -57,7 +57,7 @@ export default function AddUser() {
                 jobdesk: selectedJobdesk,
             }
 
-            const response = await axios.post("http://localhost:5001/user/create", payload);
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/create`, payload);
 
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);

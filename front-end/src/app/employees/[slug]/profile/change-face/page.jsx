@@ -58,7 +58,7 @@ export default function ChangeFace() {
 
             try {
                 const res = await axios.put(
-                    `http://localhost:5001/user/update-self/${slug}`,
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/user/update-self/${slug}`,
                     formData,
                     { headers: { "Content-Type": "multipart/form-data" } }
                 )

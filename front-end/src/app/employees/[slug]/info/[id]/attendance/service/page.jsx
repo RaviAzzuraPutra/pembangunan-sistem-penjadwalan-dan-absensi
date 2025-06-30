@@ -6,7 +6,8 @@ import Link from "next/link"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import axios from "axios"
-import { loadModels, detectFace } from "../../../../../../../utils/faceDetection";
+import { loadModels, detectFace, analyzeFace } from "../../../../../../../utils/faceDetection";
+import * as faceapi from 'face-api.js';
 
 export default function AttendanceService() {
     const videoRef = useRef(null)
@@ -14,6 +15,9 @@ export default function AttendanceService() {
     const { slug, id } = useParams()
     const searchParams = useSearchParams();
     const router = useRouter();
+    const canvasRef = useRef(null);
+    const [showValidationText, setShowValidationText] = useState(false);
+    const [challengeText, setChallengeText] = useState('');
 
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
@@ -50,7 +54,11 @@ export default function AttendanceService() {
                     }
                 )
             } else {
-                console.error("Geolocation tidak didukung oleh browser ini.")
+                Swal.fire({
+                    icon: "error",
+                    title: "Geolocation Tidak Didukung",
+                    text: "Browser Anda tidak mendukung geolocation. Silakan gunakan browser yang mendukung fitur ini."
+                });
             }
         }
     }, [])
@@ -58,13 +66,18 @@ export default function AttendanceService() {
     useEffect(() => {
         const enableCamera = async () => {
             try {
+                await loadModels();
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
                     setCameraActive(true)
                 }
             } catch (error) {
-                console.error("ERROR SAAT MENGAKSES KAMERA", error)
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal Mengakses Kamera",
+                    text: "Pastikan kamera Anda terhubung dan izinkan akses kamera pada browser ini"
+                });
             }
         }
 
@@ -77,7 +90,7 @@ export default function AttendanceService() {
         };
     }, []);
 
-    const handleCaptureFromCamera = () => {
+    const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
 
         const canvas = document.createElement("canvas");
@@ -99,10 +112,65 @@ export default function AttendanceService() {
 
             try {
                 const response = await axios.post(
-                    `http://localhost:5001/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
                     formData,
                     { headers: { "Content-Type": "multipart/form-data" } }
                 )
+
+
+                if (response.data.success) {
+                    setShowValidationText(true);
+                    setChallengeText('');
+
+                    let challengePassed = false;
+                    const descriptors = [];
+
+
+                    // Random challenge direction
+                    const directions = ['left', 'right'];
+                    const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                    const challengeMessage = randomDir === 'left'
+                        ? 'Gerakkan kepala ke KIRI'
+                        : 'Gerakkan kepala ke KANAN';
+
+                    setChallengeText(challengeMessage);
+                    setShowValidationText(true);
+
+                    await new Promise(r => setTimeout(r, 500));
+
+                    const videoWidth = videoRef.current.videoWidth;
+
+                    const validateLoop = async () => {
+                        for (let i = 0; i < 10; i++) {
+                            const result = await analyzeFace(videoRef.current);
+                            if (!result) continue;
+
+                            descriptors.push(result.descriptor);
+
+                            const nose = result.nose;
+                            const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
+
+                            if (randomDir === 'left' && noseX < videoWidth / 2 - 30) challengePassed = true;
+                            if (randomDir === 'right' && noseX > videoWidth / 2 + 30) challengePassed = true;
+                            console.log(`NoseX: ${noseX}, Midpoint: ${videoWidth / 2}`);
+
+                            await new Promise(r => setTimeout(r, 401));
+                        }
+                    };
+
+                    await validateLoop();
+
+                    setShowValidationText(false);
+
+                    if (!challengePassed) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Validasi Gagal!!!",
+                            text: "Gerakan tidak sesuai tantangan."
+                        });
+                        return;
+                    }
+                }
 
                 Swal.fire({
                     icon: 'success',
@@ -166,6 +234,12 @@ export default function AttendanceService() {
                         muted
                         className="w-full aspect-[3/4] object-cover"
                     />
+
+                    {showValidationText && (
+                        <p className="text-center font-semibold text-black">{challengeText}</p>
+                    )}
+
+
                     <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>
 

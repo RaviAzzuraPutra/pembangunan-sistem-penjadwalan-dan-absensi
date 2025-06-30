@@ -331,20 +331,21 @@ exports.monitoringLocation = async (req, res) => {
 
         const event = await Event.findById(event_id);
         const supervisorId = event.supervisor?.id?._id;
+        const user = await User.findById(user_id);
 
         if (supervisorId) {
             const subscription = await Subscription.find({ user_id: supervisorId });
 
             const notificationPayload = {
                 title: 'Monitoring Lokasi',
-                body: `User dengan ID ${user_id} telah melakukan monitoring lokasi pada event ${event.name}.`,
-            }
+                body: `${user.name} keluar dari area kerja pada event ${event.name} pukul ${new Date().toLocaleTimeString('id-ID')}`,
+            };
 
             subscription.forEach(sub => {
                 webpush.sendNotification(sub.subscription, notificationPayload).catch(error => {
                     console.error("Gagal mengirim notifikasi:", error);
-                })
-            })
+                });
+            });
         }
 
         res.status(200).json({

@@ -33,7 +33,7 @@ export default function Users() {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/user");
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user`);
                 setUsers(response.data.data);
                 setFilteredUsers(response.data.data);
             } catch (error) {
@@ -93,7 +93,7 @@ export default function Users() {
 
     const fetchUserByID = async (userID) => {
         try {
-            const response = await axios.get(`http://localhost:5001/user/${userID}`)
+            const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${userID}`)
             const user = response.data.data;
             Swal.fire({
                 title: `Detail Pengguna ${user.name}`,
@@ -124,7 +124,7 @@ export default function Users() {
     };
 
     const deleteUser = async (userID) => {
-        const response = await axios.get(`http://localhost:5001/user/${userID}`)
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${userID}`)
         const user = response.data.data;
         const confirm = await Swal.fire({
             title: `Hapus ${user.name}?`,
@@ -137,7 +137,7 @@ export default function Users() {
 
         if (confirm.isConfirmed) {
             try {
-                const res = await axios.delete(`http://localhost:5001/user/delete/${userID}`);
+                const res = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/delete/${userID}`);
                 if (res.status === 200) {
                     Swal.fire({
                         icon: "success",

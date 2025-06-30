@@ -14,7 +14,7 @@ export default function VerifyOtp() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:5001/forgot-password/verify-otp', { ID_Login, otp });
+            await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/forgot-password/verify-otp`, { ID_Login, otp });
             router.push(`/forgot-password/reset-password?ID_Login=${ID_Login}`);
         } catch (error) {
             setError(error.response?.data?.message || 'OTP salah');

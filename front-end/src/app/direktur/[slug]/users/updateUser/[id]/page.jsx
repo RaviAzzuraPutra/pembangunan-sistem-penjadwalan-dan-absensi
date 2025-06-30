@@ -22,7 +22,7 @@ export default function UpdateUser() {
     useEffect(() => {
         const fetchJobdesk = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/jobdesk");
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/jobdesk`);
                 setJobdesk(response.data.data);
             } catch (error) {
                 console.error("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
@@ -30,7 +30,7 @@ export default function UpdateUser() {
         }
         const fetchUserData = async () => {
             try {
-                const response = await axios.get(`http://localhost:5001/user/${id}`);
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${id}`);
                 const user = response.data.data;
                 setFormData({
                     name: user.name,
@@ -74,7 +74,7 @@ export default function UpdateUser() {
                 jobdesk: selectedJobdesk,
             }
 
-            const response = await axios.put(`http://localhost:5001/user/update-direktur/${id}`, payload);
+            const response = await axios.put(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/update-direktur/${id}`, payload);
             console.log("Response:", response.data);
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);

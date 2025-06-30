@@ -17,7 +17,7 @@ export default function Dashboard() {
     useEffect(() => {
         const getDashboardData = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/dashboard");
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/dashboard`);
                 setStats(response.data.data);
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);

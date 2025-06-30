@@ -32,7 +32,7 @@ export default function Monitoring() {
     useEffect(() => {
         const fetchAbsensi = async () => {
             try {
-                const response = await axios.get(`http://localhost:5001/attendance/${id}`);
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/${id}`);
                 const { event, absensi, karyawan } = response.data;
 
                 setEventName(event.name || "-");
@@ -103,7 +103,7 @@ export default function Monitoring() {
 
     const handleRemind = async (userId) => {
         try {
-            await axios.post(`http://localhost:5001/attendance/remind/${userId}/event/${id}`);
+            await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/remind/${userId}/event/${id}`);
             console.log(`pengingat telah dikirim untuk userId: ${userId}`);
             Swal.fire({
                 icon: 'success',

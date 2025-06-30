@@ -36,7 +36,7 @@ export default function Events() {
     useEffect(() => {
         const fetchEvent = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/event");
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event`);
                 const sorted = response.data.data.sort((a, b) => {
                     const dateA = new Date(a.date_prepare || a.date_service);
                     const dateB = new Date(b.date_prepare || b.date_service);
@@ -52,7 +52,7 @@ export default function Events() {
     }, []);
 
     const deleteEvent = async (eventID) => {
-        const response = await axios.get(`http://localhost:5001/event/${eventID}`);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/${eventID}`);
         const event = response.data.data;
         const confirm = await Swal.fire({
             title: `Hapus ${event.name}?`,
@@ -65,7 +65,7 @@ export default function Events() {
 
         if (confirm.isConfirmed) {
             try {
-                const res = await axios.delete(`http://localhost:5001/event/delete/${eventID}`);
+                const res = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/delete/${eventID}`);
                 if (res.status === 200) {
                     Swal.fire({
                         icon: 'success',

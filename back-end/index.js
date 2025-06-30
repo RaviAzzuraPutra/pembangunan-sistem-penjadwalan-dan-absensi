@@ -36,6 +36,9 @@ app.use("/test-face", test);
 app.use("/forgot-password", forgotPasswordRouter);
 app.use("/attendance", attendanceRouter);
 app.use("/dashboard", dashboardRouter);
+app.get('/', (req, res) => {
+    res.send("合格できるといいですね")
+})
 
 const startServer = async () => {
     await connect();

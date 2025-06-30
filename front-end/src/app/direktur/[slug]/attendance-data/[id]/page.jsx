@@ -31,7 +31,7 @@ export default function AttendanceDetailData() {
     useEffect(() => {
         const fetchAbsensi = async () => {
             try {
-                const response = await axios.get(`http://localhost:5001/attendance/${id}`);
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/${id}`);
                 const { event, absensi, karyawan } = response.data;
 
                 setEventName(event.name || "-");

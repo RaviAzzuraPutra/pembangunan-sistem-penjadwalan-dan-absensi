@@ -11,15 +11,16 @@ import Swal from "sweetalert2";
 
 export default function InfoEventPageEmployees() {
     const { slug, id } = useParams();
+    const router = useRouter();
     const [eventInfo, setEventInfo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [insideArea, setInsideArea] = useState(true);
     const [isPrepareTime, setIsPrepareTime] = useState(false);
     const [isServiceTime, setIsServiceTime] = useState(false);
     const [userPosition, setUserPosition] = useState(null);
-    const router = useRouter();
     const [user, setUser] = useState(null);
     const [isMonitoringTime, setIsMonitoringTime] = useState(false);
+    const [isFakeGpsDetected, setIsFakeGpsDetected] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -37,7 +38,7 @@ export default function InfoEventPageEmployees() {
     useEffect(() => {
         const fetchEventInfo = async () => {
             try {
-                const response = await axios.get(`http://localhost:5001/event/eventInfo/${slug}/info/${id}`);
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/eventInfo/${slug}/info/${id}`);
                 setEventInfo(response.data);
             } catch (error) {
                 console.error("Gagal memuat detail acara:", error);
@@ -68,6 +69,7 @@ export default function InfoEventPageEmployees() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
+                    const { accuracy, speed } = position.coords;
                     const userLocation = turf.point([
                         position.coords.longitude,
                         position.coords.latitude
@@ -77,8 +79,22 @@ export default function InfoEventPageEmployees() {
                     const isInside = turf.booleanPointInPolygon(userLocation, eventPolygon);
                     setInsideArea(isInside);
                     setUserPosition(position);
-                    console.log("User position:", position);
-                    console.log("Is inside area:", isInside);
+
+                    let fakeGpsSuspect = false;
+
+                    if (accuracy < 5 || accuracy > 500) { // Toleransi akurasi, sesuaikan!
+                        console.log("Akurasi GPS mencurigakan:", accuracy);
+                        fakeGpsSuspect = true;
+                    }
+
+                    if (speed !== null && speed !== undefined && speed > 0.1 && accuracy < 100) { // Jika ada kecepatan terdeteksi saat user diam
+                        console.log("Kecepatan terdeteksi saat user seharusnya diam:", speed);
+                        fakeGpsSuspect = true;
+                    }
+
+                    setIsFakeGpsDetected(fakeGpsSuspect);
+                    setInsideArea(isInside && !fakeGpsSuspect);
+
                 },
                 (error) => {
                     switch (error.code) {
@@ -117,7 +133,8 @@ export default function InfoEventPageEmployees() {
                             });
                     }
                     console.error("Geolocation error:", error);
-                    setInsideArea(false);
+                    setInsideArea(false); // Pastikan tidak bisa absensi jika ada error lokasi
+                    setIsFakeGpsDetected(true); // Asumsikan error lokasi = fake GPS atau masalah serius
                 },
                 geoOptions
             );
@@ -242,7 +259,7 @@ export default function InfoEventPageEmployees() {
                     </div>
                 </div>
 
-                {insideArea ? (
+                {insideArea && !isFakeGpsDetected ? ( // Tambahkan !isFakeGpsDetected di sini
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5">
                         {userPosition && (role === 'gudang' || role === 'supervisor') && (
                             <button
@@ -261,16 +278,24 @@ export default function InfoEventPageEmployees() {
                             >
                                 ABSEN SERVICE
                             </button>
-
                         )}
                         {userPosition && role === 'supervisor' && (
-                            <Link href={`/employees/${slug}/info/${id}/monitoring`} className="w-full bg-yellow-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-yellow-700 mt-3" disabled={!isMonitoringTime}>
+                            <Link
+                                href={`/employees/${slug}/info/${id}/monitoring`}
+                                className={`w-full px-2 py-1 rounded-md shadow-sm text-center mt-3 ${isMonitoringTime ? "bg-yellow-500 hover:bg-yellow-700 text-white" : "bg-gray-300 text-gray-600 cursor-not-allowed"}`}
+                                disabled={!isMonitoringTime}
+                            >
                                 MONITORING
                             </Link>
                         )}
                     </div>
                 ) : (
-                    <p className="text-red-600 font-semibold pt-5">Anda berada di luar area acara. Absensi dan monitoring tidak tersedia.</p>
+                    <p className="text-red-600 font-semibold pt-5">
+                        {isFakeGpsDetected ?
+                            "Terdeteksi penggunaan lokasi yang tidak valid. Absensi dan monitoring tidak tersedia. Nonaktifkan aplikasi pemalsu lokasi." :
+                            "Anda berada di luar area acara. Absensi dan monitoring tidak tersedia."
+                        }
+                    </p>
                 )}
 
             </div>

@@ -15,7 +15,7 @@ export const registerSubscription = async (userId) => {
                 applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
             });
 
-            await axios.post("http://localhost:5001/attendance/push-subscription", {
+            await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/push-subscription`, {
                 userId,
                 subscription
             });

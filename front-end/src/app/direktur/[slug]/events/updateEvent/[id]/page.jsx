@@ -67,7 +67,7 @@ export default function UpdateEvent() {
 
     useEffect(() => {
         const fetchEvent = async () => {
-            const res = await axios.get(`http://localhost:5001/event/${params.id}`);
+            const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/${params.id}`);
             const event = res.data.data;
             setEvent(event);
 
@@ -141,7 +141,7 @@ export default function UpdateEvent() {
     useEffect(() => {
         const fetchAllKaryawan = async () => {
             try {
-                const res = await axios.get('http://localhost:5001/event/available-employees');
+                const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/available-employees`);
                 if (res.data.success) {
                     setAllKaryawan(res.data.data);
                     setKaryawanData(res.data.data);
@@ -353,7 +353,7 @@ export default function UpdateEvent() {
 
 
             const response = await axios.put(
-                `http://localhost:5001/event/update/${params.id}`,
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/update/${params.id}`,
                 body
             )
             const successStatus = response.data.success ? 'true' : 'false';

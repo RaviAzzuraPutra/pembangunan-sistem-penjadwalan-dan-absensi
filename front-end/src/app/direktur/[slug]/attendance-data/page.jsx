@@ -17,7 +17,7 @@ export default function AttendanceData() {
     useEffect(() => {
         const fetchEvent = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/event");
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event`);
                 setEvents(response.data.data);
                 console.log("Data Event:", response.data.data);
             } catch (error) {

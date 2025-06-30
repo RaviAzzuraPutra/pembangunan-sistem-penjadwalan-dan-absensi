@@ -13,7 +13,7 @@ export default function ForgotPassword() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`http://localhost:5001/forgot-password/forgot-password`, { ID_Login });
+            await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/forgot-password/forgot-password`, { ID_Login });
             router.push(`/forgot-password/verify-otp?ID_Login=${ID_Login}`)
         } catch (error) {
             setError(error.response?.data?.message || 'ID_Login Tidak Ditemukan');

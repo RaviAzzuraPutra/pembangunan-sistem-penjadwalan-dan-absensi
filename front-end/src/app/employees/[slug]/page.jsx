@@ -20,7 +20,7 @@ export default function Employees() {
         console.log("Slug saat useEffect:", slug);
         const fetchEvents = async () => {
             try {
-                const response = await axios.get(`http://localhost:5001/event/assigned/${slug}`);
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/assigned/${slug}`);
                 console.log("Response full:", response.data);
                 setEvents(response.data.data);
             } catch (error) {
@@ -60,7 +60,7 @@ export default function Employees() {
 
     const handleLogout = async () => {
         try {
-            const response = await axios.post("http://localhost:5001/auth/logout", {}, {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, {}, {
                 withCredentials: true,
             });
             if (response.data.success) {
@@ -74,7 +74,7 @@ export default function Employees() {
 
     const handleConfirm = async (status, event, kategori, userId, menu) => {
         try {
-            await axios.put(`http://localhost:5001/event/confirm/${event._id}`, {
+            await axios.put(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/confirm/${event._id}`, {
                 userId,
                 status,
                 kategori,

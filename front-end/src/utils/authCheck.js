@@ -11,7 +11,7 @@ export default function AuthCheck() {
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/auth/check-auth", {
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/check-auth`, {
                     withCredentials: true,
                 });
 

@@ -11,7 +11,7 @@ export default function Whatsapp() {
     useEffect(() => {
         const fetchQRCode = async () => {
             try {
-                const response = await axios.get("http://localhost:5001/whatsapp/connect")
+                const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/whatsapp/connect`)
                 const data = response.data;
 
                 if (data.connected) {

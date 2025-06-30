@@ -79,7 +79,7 @@ export default function Profile() {
         });
         if (formValues) {
             try {
-                const response = await axios.put(`http://localhost:5001/user/update-self/${slug}`, {
+                const response = await axios.put(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/update-self/${slug}`, {
                     password: formValues.password
                 });
 
@@ -130,7 +130,7 @@ export default function Profile() {
         });
         if (formValues) {
             try {
-                const response = await axios.put(`http://localhost:5001/user/update-self/${slug}`, {
+                const response = await axios.put(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/update-self/${slug}`, {
                     phone: formValues.phone
                 });
 

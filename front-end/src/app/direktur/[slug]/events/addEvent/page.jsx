@@ -88,7 +88,7 @@ export default function AddEvent() {
     useEffect(() => {
         const fetchAllKaryawan = async () => {
             try {
-                const res = await axios.get('http://localhost:5001/event/available-employees');
+                const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/available-employees`);
                 if (res.data.success) {
                     setAllKaryawan(res.data.data);
                     setKaryawanData(res.data.data);
@@ -121,7 +121,7 @@ export default function AddEvent() {
 
         try {
             const { data: { data: available } } = await axios.get(
-                `http://localhost:5001/event/available-employees?date_prepare=${prepareDate}&date_service=${serviceDate}`
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/available-employees?date_prepare=${prepareDate}&date_service=${serviceDate}`
             );
             const filtered = allKaryawan.filter(k =>
                 available.some(a => a._id === k._id)
@@ -307,7 +307,7 @@ export default function AddEvent() {
 
 
             const response = await axios.post(
-                'http://localhost:5001/event/create',
+                `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/create`,
                 body
             )
             const successStatus = response.data.success ? 'true' : 'false';

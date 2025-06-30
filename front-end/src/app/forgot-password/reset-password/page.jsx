@@ -28,7 +28,7 @@ export default function ResetPassword() {
         }
 
         try {
-            const response = await axios.post("http://localhost:5001/forgot-password/reset-password", {
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/forgot-password/reset-password`, {
                 ID_Login,
                 newPassword: password
             });
