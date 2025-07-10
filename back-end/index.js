@@ -6,7 +6,6 @@ const userRouter = require("./routes/userRouter");
 const jobdeskRouter = require("./routes/jobdeskRouter");
 const authRouter = require("./routes/authRouter");
 const eventRouter = require("./routes/eventRouter");
-const test = require("./routes/TestResponseRouter");
 const forgotPasswordRouter = require("./routes/forgotPasswordRouter");
 const attendanceRouter = require("./routes/attendanceRouter");
 const dashboardRouter = require("./routes/dashboardRouter");
@@ -18,13 +17,15 @@ const AutoCantCron = require("./utils/auto-Cant");
 const AutoCanCron = require("./utils/auto-can");
 const connect = require("./utils/connect");
 
+const corsOptions = {
+    origin: true,
+    credentials: true,
+}
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
-}));
 app.use(cookieParser());
 
 app.use("/whatsapp", whatsappRouter);
@@ -32,7 +33,6 @@ app.use("/user", userRouter);
 app.use("/jobdesk", jobdeskRouter);
 app.use("/auth", authRouter);
 app.use("/event", eventRouter);
-app.use("/test-face", test);
 app.use("/forgot-password", forgotPasswordRouter);
 app.use("/attendance", attendanceRouter);
 app.use("/dashboard", dashboardRouter);

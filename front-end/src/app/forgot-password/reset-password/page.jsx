@@ -18,12 +18,20 @@ export default function ResetPassword() {
         setError('');
 
         if (password !== confirmPassword) {
-            setError("Password dan konfirmasi password tidak sama.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Password Tidak Sama!',
+                text: "Password dan konfirmasi password tidak sama.",
+            });
             return;
         }
 
-        if (password.length < 6) {
-            setError("Password harus minimal 6 karakter.");
+        if (password.length < 8) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Password Terlalu Pendek!',
+                text: "Password harus minimal 8 karakter.",
+            });
             return;
         }
 
@@ -43,7 +51,7 @@ export default function ResetPassword() {
             });
 
         } catch (error) {
-            console.error("RESET ERROR:", error); // debug log
+            console.log("RESET ERROR:", error); // debug log
             setError(error.response?.data?.message || "Gagal mereset password.");
         }
     };

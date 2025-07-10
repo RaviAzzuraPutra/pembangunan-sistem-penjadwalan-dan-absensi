@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
 import { useParams } from 'next/navigation'
+import Swal from "sweetalert2"
 
 export default function UpdateUser() {
     const { id, slug } = useParams();  // Mengambil ID pengguna dari URL
@@ -25,7 +26,7 @@ export default function UpdateUser() {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/jobdesk`);
                 setJobdesk(response.data.data);
             } catch (error) {
-                console.error("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
+                console.log("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
             }
         }
         const fetchUserData = async () => {
@@ -41,7 +42,7 @@ export default function UpdateUser() {
                 });
                 setSelectedJobdesk(user.jobdesk.map(jd => jd._id));
             } catch (error) {
-                console.error("Gagal mengambil data pengguna:", error);
+                console.log("Gagal mengambil data pengguna:", error);
             }
         }
         fetchJobdesk();
@@ -68,6 +69,26 @@ export default function UpdateUser() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (selectedJobdesk.length === 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Jobdesk Tidak Dipilih!',
+                text: "Anda harus memilih setidaknya satu jobdesk.",
+            });
+            return;
+        }
+
+
+        if (formData.name.length < 3 || formData.name.length > 50 || formData.name.trim() === "") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nama Tidak Valid!',
+                text: "Nama harus antara 3 dan 50 karakter dan tidak boleh kosong.",
+            });
+            return;
+        }
+
         try {
             const payload = {
                 ...formData,
@@ -79,7 +100,7 @@ export default function UpdateUser() {
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
-            console.error("Gagal mengubah pengguna:", error);
+            console.log("Gagal mengubah pengguna:", error);
             const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Mengubah Pengguna!";
             router.push(`/direktur/${slug}/users?success=false&message=${encodeURIComponent(errorMessage)}`);
         }

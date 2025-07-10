@@ -1,10 +1,19 @@
 const Event = require("../models/Event");
 const User = require("../models/User");
+const Subscription = require('../models/Subscription');
 const sendMessage = require("../utils/send-message");
 const Unavailability = require("../models/Unavailability");
+const Monitoring = require("../models/Monitoring");
 const slugify = require("slugify");
 const Attendance = require("../models/Attendance");
+const webpush = require("web-push");
+require("dotenv").config();
 
+webpush.setVapidDetails(
+    "mailto:example@yourdomain.org",
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+);
 
 exports.createEvent = async (req, res) => {
     try {
@@ -46,7 +55,6 @@ exports.createEvent = async (req, res) => {
 
         if (ops.length) {
             await Unavailability.bulkWrite(ops);
-            console.log(`Inserted/updated ${ops.length} unavailability entries`);
         }
 
         res.status(200).json({
@@ -61,7 +69,12 @@ exports.createEvent = async (req, res) => {
             const userIdDapur = newEvent.dapur.flatMap(menu =>
                 menu.penanggung_jawab.map(pj => pj.user_id.toString())
             );
-            const allUserId = [...new Set([...userIdGudang, ...userIdDapur])];
+            const userIdSupervisor = newEvent.supervisor?.id?.toString();
+            const allUserId = [...new Set([
+                ...userIdGudang,
+                ...userIdDapur,
+                ...(userIdSupervisor ? [userIdSupervisor] : [])
+            ])];
 
             const users = await User.find({ _id: { $in: allUserId } });
 
@@ -80,7 +93,7 @@ exports.createEvent = async (req, res) => {
                             `📅 Service:  ${newEvent.date_service.toLocaleDateString()}\n` +
                             `📍 Lokasi: ${newEvent.location?.name || '-'}\n\n` +
                             `Cek dan konfirmasi sekarang di aplikasi 👇:\n` +
-                            ` http://localhost:3000 \n` +
+                            `link website: ${process.env.FRONTEND_ORIGIN}\n` +
                             `Jika belum, buka Chrome dan pilih opsi "Tambahkan ke layar utama" untuk membuatnya mirip dengan aplikasi.😉`;
                         try {
                             await sendMessage(phoneFormatted, message);
@@ -349,12 +362,105 @@ exports.updateEvent = async (req, res) => {
                 `📅 Service:  ${updatedEvent.date_service.toLocaleDateString()}\n` +
                 `📍 Lokasi: ${updatedEvent.location?.name || '-'}\n\n` +
                 `Cek dan konfirmasi sekarang di aplikasi 👇:\n` +
-                ` http://localhost:3000 \n` +
+                `link login website: ${process.env.FRONTEND_ORIGIN}\n` +
                 `Jika belum, buka Chrome dan pilih opsi "Tambahkan ke layar utama" untuk membuatnya mirip dengan aplikasi.😉`;
             await sendMessage(phoneFormatted, message)
                 .catch(err => {
                     console.error(`Gagal kirim pesan ke ${userId}:`, err);
                 });
+        }
+
+        // Cek apakah perubahan hanya pada tanggal, jam, lokasi
+        const isTanggalBerubah =
+            oldEvent.date_prepare?.toISOString() !== new Date(updateData.date_prepare).toISOString() ||
+            oldEvent.date_service?.toISOString() !== new Date(updateData.date_service).toISOString();
+
+
+        const isJamBerubah =
+            oldEvent.time_start_prepare !== updateData.time_start_prepare ||
+            oldEvent.time_end_prepare !== updateData.time_end_prepare ||
+            oldEvent.time_start_service !== updateData.time_start_service ||
+            oldEvent.time_end_service !== updateData.time_end_service;
+
+        const isLokasiBerubah =
+            oldEvent.location?.name !== updateData.location?.name ||
+            oldEvent.location?.latitude !== updateData.location?.latitude ||
+            oldEvent.location?.longitude !== updateData.location?.longitude;
+
+        const oldGudangIds = oldEvent.gudang.map(g => g.user_id.toString()).sort().join(',');
+        const newGudangIds = updatedEvent.gudang.map(g => g.user_id.toString()).sort().join(',');
+        const isDaftarGudangBerubah = oldGudangIds !== newGudangIds;
+
+
+        const oldDapurIds = oldEvent.dapur.flatMap(d => d.penanggung_jawab.map(p => p.user_id.toString())).sort().join(',');
+        const newDapurIds = updatedEvent.dapur.flatMap(d => d.penanggung_jawab.map(p => p.user_id.toString())).sort().join(',');
+        const isDaftarDapurBerubah = oldDapurIds !== newDapurIds;
+
+
+
+
+        const hanyaTanggalJamLokasiYangBerubah = (
+            (isTanggalBerubah || isJamBerubah || isLokasiBerubah) &&
+            !isDaftarGudangBerubah && !isDaftarDapurBerubah
+        );
+
+        // Kirim pesan jika hanya tanggal/jam/lokasi yang berubah
+        if (hanyaTanggalJamLokasiYangBerubah) {
+            const gudangUserIds = updatedEvent.gudang
+                .filter(g => g.confirmation === 'bisa')
+                .map(g => g.user_id.toString());
+
+            const dapurUserIds = updatedEvent.dapur.flatMap(d =>
+                d.penanggung_jawab
+                    .filter(p => p.confirmation === 'bisa')
+                    .map(p => p.user_id.toString())
+            );
+
+            const supervisorUserId = updatedEvent.supervisor?.id?.toString();
+            const isSupervisorConfirmed = updatedEvent.supervisor?.confirmation === 'bisa';
+
+            const allUserIds = [
+                ...new Set([
+                    ...gudangUserIds,
+                    ...dapurUserIds,
+                    ...(isSupervisorConfirmed && supervisorUserId ? [supervisorUserId] : [])
+                ])
+            ];
+            const users = await User.find({ _id: { $in: allUserIds } });
+
+
+
+            let batch = [];
+            for (let i = 0; i < users.length; i++) {
+                batch.push(users[i]);
+
+                const isLast = i === users.length - 1;
+                if (batch.length === 10 || isLast) {
+                    for (const user of batch) {
+                        const phoneFormatted = user.phone.replace(/^0/, "+62");
+                        const message = `Hai ${user.name}, event *${updatedEvent.name}* yang kamu ikuti mengalami perubahan jadwal atau lokasi.\n\n` +
+                            `📛 Nama: ${updatedEvent.name}\n` +
+                            `📅 Prepare: ${updatedEvent.date_prepare.toLocaleDateString()}\n` +
+                            `📅 Service:  ${updatedEvent.date_service.toLocaleDateString()}\n` +
+                            `📍 Lokasi: ${updatedEvent.location?.name || '-'}\n\n` +
+                            `Cek kembali detailnya di aplikasi 👇:\n` +
+                            ` ${process.env.FRONTEND_ORIGIN} \n` +
+                            `Jika belum, buka Chrome dan pilih opsi "Tambahkan ke layar utama" untuk membuatnya mirip dengan aplikasi.😉`;
+                        try {
+                            await sendMessage(phoneFormatted, message);
+                            console.log("✅ Pesan terkirim ke", user.name);
+                        } catch (err) {
+                            console.error(`Gagal kirim pesan ke ${user._id}:`, err);
+                        }
+                    }
+
+                    batch = [];
+                    if (!isLast) {
+                        console.log("Menunggu 2 menit sebelum batch selanjutnya...");
+                        await new Promise(resolve => setTimeout(resolve, 120000));
+                    }
+                }
+            }
         }
 
         res.status(200).json({
@@ -467,8 +573,10 @@ exports.deleteEvent = async (req, res) => {
 
         await Attendance.deleteMany({ event_id: id });
 
+        await Monitoring.deleteMany({ event_id: id });
+
         // Hapus event
-        await event.deleteOne();
+        const deleted = await Event.findByIdAndDelete(id);
 
         return res.status(200).json({
             success: true,
@@ -479,7 +587,7 @@ exports.deleteEvent = async (req, res) => {
         console.error("Error saat menghapus event:", error);
         return res.status(500).json({
             success: false,
-            message: "Gagal Menghapus Event"
+            message: "Gagal Menghapus Acara"
         });
     }
 };
@@ -493,8 +601,6 @@ exports.getAssignedEvents = async (req, res) => {
             return res.status(404).json({ message: 'User tidak ditemukan' });
         }
 
-        console.log("User ditemukan:", user._id, user.slug);
-
         const events = await Event.find({
             $or: [
                 { 'gudang.user_id': user._id },
@@ -507,7 +613,6 @@ exports.getAssignedEvents = async (req, res) => {
             select: 'slug name'
         });
 
-        console.log("Events ditemukan:", events.length);
         res.status(200).json({
             message: 'Berhasil mengambil assigned events',
             data: events,
@@ -537,6 +642,24 @@ exports.confirm = async (req, res) => {
 
             if (!existingUnavailability) {
                 await Unavailability.create({ user_id: userId, date: tanggal });
+            }
+
+            const direktur = await User.findOne({ role: 'direktur' });
+            const subscription = await Subscription.findOne({ user_id: direktur._id });
+            const user = await User.findById(userId);
+
+            if (subscription) {
+                const payload = JSON.stringify({
+                    title: 'Konfirmasi Tidak Bisa Hadir',
+                    body: `${user.name} tidak bisa hadir untuk event "${event.name}"`,
+                    icon: '/icons/LOGO-PERUSAHAAN.ico',
+                });
+
+                try {
+                    await webpush.sendNotification(subscription.subscription, payload);
+                } catch (err) {
+                    console.error("Gagal kirim notifikasi ke direktur:", err);
+                }
             }
         }
 

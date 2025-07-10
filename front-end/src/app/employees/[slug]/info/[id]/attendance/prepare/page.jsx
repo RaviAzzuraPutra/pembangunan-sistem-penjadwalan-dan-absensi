@@ -7,7 +7,6 @@ import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import axios from "axios"
 import { loadModels, detectFace, analyzeFace } from "../../../../../../../utils/faceDetection";
-import * as faceapi from 'face-api.js';
 
 
 export default function AttendancePrepare() {
@@ -47,7 +46,7 @@ export default function AttendancePrepare() {
                         })
                     },
                     (error) => {
-                        console.error("Gagal mendapatkan lokasi:", error)
+                        console.log("Gagal mendapatkan lokasi:", error)
                     },
                     {
                         enableHighAccuracy: true,
@@ -56,7 +55,7 @@ export default function AttendancePrepare() {
                     }
                 )
             } else {
-                console.error("Geolocation tidak didukung oleh browser ini.")
+                console.log("Geolocation tidak didukung oleh browser ini.")
             }
         }
     }, [])
@@ -71,7 +70,7 @@ export default function AttendancePrepare() {
                     setCameraActive(true)
                 }
             } catch (error) {
-                console.error("ERROR SAAT MENGAKSES KAMERA", error)
+                console.log("ERROR SAAT MENGAKSES KAMERA", error)
             }
         }
 

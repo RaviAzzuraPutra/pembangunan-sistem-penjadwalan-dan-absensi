@@ -2,11 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Polygon, useMapEvents } from 'react-leaflet'
-if (typeof window === 'undefined') {
-    global.L = {};
-} else {
-    require('leaflet');
-}
+import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import axios from 'axios'
 import Link from 'next/link'
@@ -71,10 +67,12 @@ export default function UpdateEvent() {
             const event = res.data.data;
             setEvent(event);
 
-            if (event.supervisor?.confirmation !== 'tidak bisa') {
-                setSelectedSupervisor(event.supervisor?.id?.name);
-            } else {
+
+            // Jika supervisor konfirmasi "tidak bisa", set ke kosong agar user harus memilih supervisor baru
+            if (event.supervisor?.confirmation === 'tidak bisa') {
                 setSelectedSupervisor("");
+            } else {
+                setSelectedSupervisor(event.supervisor?.id?.name || "");
             }
 
             // Preload minimal
@@ -147,7 +145,7 @@ export default function UpdateEvent() {
                     setKaryawanData(res.data.data);
                 }
             } catch (err) {
-                console.error('Gagal fetch semua karyawan:', err);
+                console.log('Gagal fetch semua karyawan:', err);
             }
         };
         fetchAllKaryawan();
@@ -206,6 +204,9 @@ export default function UpdateEvent() {
         const selectedName = e.target.value;
         setSelectedSupervisor(selectedName);
 
+        // Jika user memilih placeholder, tidak lakukan apa-apa
+        if (!selectedName) return;
+
         // Cari userId supervisor yang dipilih
         const supervisorCandidate = karyawanData.find(emp => emp.name === selectedName);
         if (!supervisorCandidate) return;
@@ -252,6 +253,83 @@ export default function UpdateEvent() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!selectedSupervisor) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Supervisor Tidak Boleh Kosong',
+                text: 'Silakan pilih supervisor untuk acara ini.',
+            });
+            return;
+        }
+
+        // Validasi jumlah karyawan (gudang + dapur + supervisor)
+        const gudangIds = selectedGudang.map(item => item.userId);
+        const dapurIds = dapurList.flatMap(menu => menu.penanggung_jawab.map(name => {
+            const emp = karyawanData.find(e => e.name === name);
+            return emp ? emp._id : null;
+        })).filter(Boolean);
+        const supervisorId = selectedSupervisorId;
+        const allKaryawanSet = new Set([...gudangIds, ...dapurIds, supervisorId]);
+        const totalKaryawan = allKaryawanSet.size;
+
+        // if (totalKaryawan < 35 || totalKaryawan > 50) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Jumlah Karyawan Tidak Valid',
+        //         text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus minimal 35 orang dan maksimal 50 orang.',
+        //     });
+        //     return;
+        // }
+
+        if (new Date(prepareDate) > new Date(serviceDate)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Prepare Tidak Valid',
+                text: 'Tanggal prepare harus sebelum tanggal service.',
+            });
+            return;
+        }
+
+        if (selectedGudang.length === 0) {
+            Swal.fire({
+                icon: "error",
+                title: "Karyawan Gudang Tidak Boleh Kosong",
+                text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
+            });
+            return;
+        }
+
+        // Validasi penanggung jawab dapur (jika diperlukan)
+        const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
+        if (!hasPenanggungJawab) {
+            Swal.fire({
+                icon: "error",
+                title: "Penanggung Jawab Dapur Tidak Boleh Kosong",
+                text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
+            })
+            return;
+        }
+
+        if (!selectedLocation) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lokasi Tidak Ditemukan',
+                text: 'Silakan pilih lokasi acara terlebih dahulu.',
+            });
+            return;
+        }
+
+        // Validasi polygon
+        if (!polygon || polygon.length < 4) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Polygon Tidak Valid',
+                text: 'Silakan gambar polygon dengan minimal 4 titik.',
+            });
+            return;
+        }
+
         try {
             const locationPayload = {
                 name: searchQuery,
@@ -302,56 +380,6 @@ export default function UpdateEvent() {
                 dapur: dapurPayload
             }
 
-            if (!selectedSupervisor) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Supervisor Tidak Boleh Kosong',
-                    text: 'Silakan pilih supervisor untuk acara ini.',
-                });
-                return;
-            }
-
-            if (selectedGudang.length === 0) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Karyawan Gudang Tidak Boleh Kosong",
-                    text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
-                });
-                return;
-            }
-
-            // Validasi penanggung jawab dapur (jika diperlukan)
-            const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
-            if (!hasPenanggungJawab) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Penanggung Jawab Dapur Tidak Boleh Kosong",
-                    text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
-                })
-                return;
-            }
-
-            if (!selectedLocation) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Lokasi Tidak Ditemukan',
-                    text: 'Silakan pilih lokasi acara terlebih dahulu.',
-                });
-                return;
-            }
-
-            // Validasi polygon
-            if (!polygon || polygon.length < 4) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Polygon Tidak Valid',
-                    text: 'Silakan gambar polygon dengan minimal 4 titik.',
-                });
-                return;
-            }
-
-
-
             const response = await axios.put(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/update/${params.id}`,
                 body
@@ -360,11 +388,11 @@ export default function UpdateEvent() {
             router.push(`/direktur/${slug}/events?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
             if (error.response) {
-                console.error("RESPONSE ERROR:", error.response.data);
+                console.log("RESPONSE ERROR:", error.response.data);
             } else if (error.request) {
-                console.error("NO RESPONSE RECEIVED:", error.request);
+                console.log("NO RESPONSE RECEIVED:", error.request);
             } else {
-                console.error("REQUEST SETUP ERROR:", error.message);
+                console.log("REQUEST SETUP ERROR:", error.message);
             }
             const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Acara!";
             router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
@@ -468,14 +496,15 @@ export default function UpdateEvent() {
                         className="w-full border px-3 py-2 rounded"
                         value={selectedSupervisor}
                         onChange={handleSupervisorChange}
+                        // Supervisor hanya tidak bisa diganti jika sudah konfirmasi "bisa"
                         disabled={event?.supervisor?.confirmation === 'bisa'}
                     >
+                        <option value="">-- Silakan pilih supervisor --</option>
                         {karyawanData
                             .filter(emp => {
                                 const isSupervisorLama = emp._id === event?.supervisor?.id?._id;
                                 const konfirmasiSupervisor = event?.supervisor?.confirmation;
                                 if (isSupervisorLama && konfirmasiSupervisor === 'tidak bisa') return false;
-
                                 // Tampilkan hanya kandidat supervisor
                                 return emp.is_supervisor_candidate;
                             })

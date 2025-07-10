@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import axios from "axios"
 import { useParams, useRouter } from "next/navigation"
+import Swal from "sweetalert2"
 
 export default function AddUser() {
     const params = useParams();
@@ -25,7 +26,7 @@ export default function AddUser() {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/jobdesk`);
                 setJobdesk(response.data.data);
             } catch (error) {
-                console.error("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
+                console.log("Terjadi Error Saat Mengambil Data Jobdesk.:", error);
             }
         }
         fetchJobdesk();
@@ -51,6 +52,35 @@ export default function AddUser() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (selectedJobdesk.length === 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Jobdesk Tidak Dipilih!',
+                text: "Anda harus memilih setidaknya satu jobdesk.",
+            });
+            return;
+        }
+
+
+        if (formData.name.length < 3 || formData.name.length > 50 || formData.name.trim() === "") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nama Tidak Valid!',
+                text: "Nama harus antara 3 dan 50 karakter dan tidak boleh kosong.",
+            });
+            return;
+        }
+
+        if (formData.password.length < 8) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Password Tidak Valid!',
+                text: "Password minimal harus 8 karakter.",
+            });
+            return;
+        }
+
         try {
             const payload = {
                 ...formData,

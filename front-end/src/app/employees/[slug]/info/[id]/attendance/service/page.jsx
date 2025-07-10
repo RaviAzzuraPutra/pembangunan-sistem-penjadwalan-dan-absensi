@@ -7,7 +7,6 @@ import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import axios from "axios"
 import { loadModels, detectFace, analyzeFace } from "../../../../../../../utils/faceDetection";
-import * as faceapi from 'face-api.js';
 
 export default function AttendanceService() {
     const videoRef = useRef(null)
@@ -45,7 +44,7 @@ export default function AttendanceService() {
                         })
                     },
                     (error) => {
-                        console.error("Gagal mendapatkan lokasi:", error)
+                        console.log("Gagal mendapatkan lokasi:", error)
                     },
                     {
                         enableHighAccuracy: true,

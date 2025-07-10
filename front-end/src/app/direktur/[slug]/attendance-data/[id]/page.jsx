@@ -6,11 +6,7 @@ import DataTable from 'react-data-table-component';
 import axios from "axios";
 import Swal from "sweetalert2";
 import Link from "next/link";
-if (typeof window === 'undefined') {
-    global.L = {};
-} else {
-    require('leaflet');
-}
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css'
 
 
@@ -32,7 +28,7 @@ export default function AttendanceDetailData() {
         const fetchAbsensi = async () => {
             try {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/${id}`);
-                const { event, absensi, karyawan } = response.data;
+                const { event, absensi, karyawan, monitoring } = response.data;
 
                 setEventName(event.name || "-");
                 setPolygon(
@@ -74,6 +70,20 @@ export default function AttendanceDetailData() {
                 // Gabungkan peserta dengan data absensi
                 const combinedData = karyawan.map(user => {
                     const key = user._id.toString();
+                    const monitoringRecord = monitoring[key];
+
+                    let keterangan = "Karyawan ini tidak keluar area kerja selama acara berlangsung";
+                    if (monitoringRecord) {
+                        const waktu = new Date(monitoringRecord.timestamp).toLocaleString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                        });
+                        keterangan = `Karyawan ini keluar area kerja pada pukul ${waktu}`;
+                    }
+
                     return {
                         _id: user._id,
                         name: user.name || "-",
@@ -83,26 +93,28 @@ export default function AttendanceDetailData() {
                         location: absensiMap[key]?.location || null,
                         prepareTime: absensiMap[key]?.prepareTime || null,
                         serviceTime: absensiMap[key]?.serviceTime || null,
+                        keterangan
                     };
                 });
 
                 setAbsensi(combinedData);
 
             } catch (error) {
-                console.error("Error fetching absensi data:", error);
+                console.log("Error fetching absensi data:", error);
             }
         }
 
         fetchAbsensi();
     }, [id]);
 
-    const showLocationMap = (location, timestamp) => {
+    const showLocationMap = (location, timestamp, fase) => {
         if (!location) {
             Swal.fire({
                 icon: "error",
                 title: "Lokasi Tidak Tersedia",
                 text: "Lokasi untuk karyawan ini tidak tersedia.",
             });
+            return;
         }
 
         const div = document.createElement('div');
@@ -115,8 +127,7 @@ export default function AttendanceDetailData() {
             : '-';
 
         Swal.fire({
-            //menampilkan nama karyawan nya
-            title: `Absensi - ${tahap === 'prepare' ? 'Prepare' : 'Service'}` +
+            title: `Absensi - ${fase === 'prepare' ? 'Prepare' : 'Service'}` +
                 ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
                 ` Waktu: ${waktuFormatted}`,
             html: div,
@@ -150,7 +161,7 @@ export default function AttendanceDetailData() {
                 row.prepare === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, row.prepareTime)}
+                        onClick={() => showLocationMap(row.location, row.prepareTime, 'prepare')}
                     >
                         ✅
                     </span>
@@ -163,7 +174,7 @@ export default function AttendanceDetailData() {
                 row.service === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, row.serviceTime)}
+                        onClick={() => showLocationMap(row.location, row.serviceTime, 'service')}
                     >
                         ✅
                     </span>
@@ -172,7 +183,8 @@ export default function AttendanceDetailData() {
         },
         {
             name: "Keterangan",
-            cell: row => "TEST"
+            cell: row => row.keterangan,
+            grow: 2,
         }
     ];
 

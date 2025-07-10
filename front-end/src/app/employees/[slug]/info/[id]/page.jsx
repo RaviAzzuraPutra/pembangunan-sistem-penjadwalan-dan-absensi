@@ -41,7 +41,7 @@ export default function InfoEventPageEmployees() {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/eventInfo/${slug}/info/${id}`);
                 setEventInfo(response.data);
             } catch (error) {
-                console.error("Gagal memuat detail acara:", error);
+                console.log("Gagal memuat detail acara:", error);
             } finally {
                 setLoading(false);
             }
@@ -132,7 +132,7 @@ export default function InfoEventPageEmployees() {
                                 text: 'Terjadi kesalahan saat mengambil lokasi.'
                             });
                     }
-                    console.error("Geolocation error:", error);
+                    console.log("Geolocation error:", error);
                     setInsideArea(false); // Pastikan tidak bisa absensi jika ada error lokasi
                     setIsFakeGpsDetected(true); // Asumsikan error lokasi = fake GPS atau masalah serius
                 },
@@ -227,7 +227,7 @@ export default function InfoEventPageEmployees() {
                     />
                 </div>
             </Link>
-            <h1 className="text-2xl font-bold text-center">{event?.name}</h1>
+            <h1 className="text-2xl font-bold text-center break-words max-w-full sm:max-w-3xl mx-auto px-4">{event?.name}</h1>
             <hr className="border-1 border-gray-300" />
             <div className="shadow-lg p-4 space-y-4 border-2 border-black overflow-auto max-h-[80vh] sm:max-h-[90vh]">
 

@@ -13,8 +13,6 @@ exports.forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ ID_Login });
 
-    console.log("Menerima ID_Login:", ID_Login);
-
     if (!user) {
         return res.status(404).json({
             success: false,
@@ -61,7 +59,6 @@ exports.resetPassword = async (req, res) => {
     const { ID_Login, newPassword } = req.body;
     const hashedPassword = await bcrypt.hash(newPassword, 11);
     const user = await User.findOne({ ID_Login });
-    console.log("Reset request for ID_Login:", ID_Login);
 
     if (!user) {
         return res.status(404).json({

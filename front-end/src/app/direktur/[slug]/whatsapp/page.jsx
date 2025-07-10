@@ -24,7 +24,7 @@ export default function Whatsapp() {
                 }
 
             } catch (error) {
-                console.error("Terjasi kesalahan saat mengambil QR Code:", error);
+                console.log("Terjasi kesalahan saat mengambil QR Code:", error);
                 setLoading("Terjadi kesalahan saat mengambil QR Code")
             }
         }

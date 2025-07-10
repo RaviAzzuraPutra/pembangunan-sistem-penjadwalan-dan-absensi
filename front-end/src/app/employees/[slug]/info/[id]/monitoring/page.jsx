@@ -33,7 +33,7 @@ export default function Monitoring() {
         const fetchAbsensi = async () => {
             try {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/${id}`);
-                const { event, absensi, karyawan } = response.data;
+                const { event, absensi, karyawan, monitoring } = response.data;
 
                 setEventName(event.name || "-");
                 setPolygon(
@@ -76,16 +76,34 @@ export default function Monitoring() {
                 });
 
                 // Gabungkan peserta dengan data absensi
-                const combinedData = karyawan.map(user => ({
-                    _id: user._id,
-                    name: user.name || "-",
-                    prepare: absensiMap[user._id]?.prepare || "-",
-                    service: absensiMap[user._id]?.service || "-",
-                    prepareLocation: absensiMap[user._id]?.prepareLocation || null,
-                    serviceLocation: absensiMap[user._id]?.serviceLocation || null,
-                    prepareTime: absensiMap[user._id]?.prepareTime || null,
-                    serviceTime: absensiMap[user._id]?.serviceTime || null,
-                }));
+                const combinedData = karyawan.map(user => {
+                    const key = user._id.toString();
+                    const monitoringRecord = monitoring[key];
+
+                    let keterangan = "Karyawan ini tidak keluar area kerja selama acara berlangsung";
+                    if (monitoringRecord) {
+                        const waktu = new Date(monitoringRecord.timestamp).toLocaleString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                        });
+                        keterangan = `Karyawan ini keluar area kerja pada pukul ${waktu}`;
+                    }
+
+                    return {
+                        _id: user._id,
+                        name: user.name || "-",
+                        jobdesk: user.jobdeskLabel || "",
+                        prepare: absensiMap[key]?.prepare || "-",
+                        service: absensiMap[key]?.service || "-",
+                        location: absensiMap[key]?.location || null,
+                        prepareTime: absensiMap[key]?.prepareTime || null,
+                        serviceTime: absensiMap[key]?.serviceTime || null,
+                        keterangan
+                    };
+                });
 
                 const supervisorId = event.supervisorId;
                 const filteredData = combinedData.filter(user => user._id !== supervisorId);
@@ -93,7 +111,7 @@ export default function Monitoring() {
                 setAbsensi(filteredData);
 
             } catch (error) {
-                console.error("Error fetching absensi data:", error);
+                console.log("Error fetching absensi data:", error);
             }
         }
 
@@ -111,7 +129,7 @@ export default function Monitoring() {
                 text: 'Pengingat telah dikirim!',
             });
         } catch (error) {
-            console.error("Error sending reminder:", error);
+            console.log("Error sending reminder:", error);
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal!',
@@ -201,8 +219,9 @@ export default function Monitoring() {
             wrap: true,
         },
         {
-            name: "keterangan",
-            cell: row => "test"
+            name: "Keterangan",
+            cell: row => row.keterangan,
+            grow: 2,
         },
         {
             name: 'Aksi',

@@ -20,7 +20,7 @@ export default function Dashboard() {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/dashboard`);
                 setStats(response.data.data);
             } catch (error) {
-                console.error("Error fetching dashboard data:", error);
+                console.log("Error fetching dashboard data:", error);
             };
         }
 

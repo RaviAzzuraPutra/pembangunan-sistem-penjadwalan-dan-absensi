@@ -23,7 +23,7 @@ export const registerSubscription = async (userId) => {
             console.log("Sending subscription:", { userId, subscription });
 
         } catch (error) {
-            console.error("Error during push subscription:", error);
+            console.log("Error during push subscription:", error);
         }
     }
 }

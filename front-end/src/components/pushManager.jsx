@@ -28,7 +28,7 @@ export default function PushManager({ children }) {
                     doRegister();
                 })
                 .catch((err) => {
-                    console.error("PushManager: gagal register SW:", err);
+                    console.log("PushManager: gagal register SW:", err);
                 });
         }
     }, []);

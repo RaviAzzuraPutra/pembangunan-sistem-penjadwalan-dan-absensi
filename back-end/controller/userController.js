@@ -4,6 +4,7 @@ const multer = require("multer");
 const { detectFace } = require("../utils/faceapi-function");
 const sendMessage = require("../utils/send-message");
 const Jobdesk = require("../models/Jobdesk");
+require("dotenv").config();
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -42,7 +43,8 @@ exports.createUser = async (req, res) => {
             `*Status Supervisor:* ${is_supervisor_candidate ? "Supervisor" : "Bukan Supervisor"}\n` +
             `*Jobdesk:* ${jobdeskName}\n\n` +
             `Silakan login menggunakan ID Login dan password di atas.\n` +
-            `link login website: http://localhost:3000`;
+            `link login website: ${process.env.FRONTEND_ORIGIN}\n` +
+            `Jika belum, buka Chrome dan pilih opsi "Tambahkan ke layar utama" untuk membuatnya mirip dengan aplikasi.😉`;
 
         await sendMessage(phone_replace, message);
 

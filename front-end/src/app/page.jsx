@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import AuthCheck from "../utils/authCheck";
 
 export default function Home() {
   return (

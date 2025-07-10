@@ -26,7 +26,6 @@ function combineDateTime(date, timeStr) {
 
 exports.createAttendance = async (req, res) => {
     try {
-        console.log("File yang diupload:", req.file);
         if (!req.file) {
             return res.status(400).json({ message: "Tidak ada file yang diupload" });
         }
@@ -101,52 +100,42 @@ exports.getAttendancesByEvent = async (req, res) => {
         }
 
 
-        // 1. Kumpulkan semua ID peserta (gudang + dapur + supervisor)
+        // 1. Kumpulkan semua ID peserta
         const pesertaSet = new Set();
+        event.gudang.forEach(g => g.user_id && pesertaSet.add(g.user_id._id.toString()));
+        event.dapur.forEach(d => d.penanggung_jawab.forEach(pj => pj.user_id && pesertaSet.add(pj.user_id._id.toString())));
+        if (event.supervisor?.id) pesertaSet.add(event.supervisor.id._id.toString());
 
-        event.gudang.forEach(g => {
-            if (g.user_id) pesertaSet.add(g.user_id._id.toString());
-        });
-        event.dapur.forEach(d => {
-            d.penanggung_jawab.forEach(pj => {
-                if (pj.user_id) pesertaSet.add(pj.user_id._id.toString());
-            });
-        });
-        // *** Tambahkan supervisor *** 
-        if (event.supervisor?.id) {
-            // setelah populate, event.supervisor.id adalah dokumen User
-            pesertaSet.add(event.supervisor.id._id.toString());
-        }
-
-        // 2. Buat array karyawan dari pesertaSet
         const karyawanArray = Array.from(pesertaSet).map(userIdStr => {
             if (event.supervisor?.id?._id.toString() === userIdStr) {
                 return { ...event.supervisor.id.toObject(), jobdeskLabel: 'supervisor' };
             }
-
             const gud = event.gudang.find(g => g.user_id?._id.toString() === userIdStr);
             if (gud) {
                 const jobdeskNames = (gud.jobdesk || []).map(j => j.name).join(', ');
                 return { ...gud.user_id.toObject(), jobdeskLabel: jobdeskNames };
             }
-
             for (const d of event.dapur) {
                 const pj = d.penanggung_jawab.find(pj => pj.user_id?._id.toString() === userIdStr);
-                if (pj) {
-                    return { ...pj.user_id.toObject(), jobdeskLabel: 'penanggung jawab dapur' };
-                }
+                if (pj) return { ...pj.user_id.toObject(), jobdeskLabel: 'penanggung jawab dapur' };
             }
-
             return { _id: userIdStr, name: "Unknown", slug: "", jobdeskLabel: "" };
         });
 
+        // 2. Ambil data absensi & monitoring
         const attendanceList = await Attendance.find({ event_id: eventId })
             .populate('user_id', 'name slug face_data')
             .sort({ timestamp: -1 });
 
-        console.log("Polygon dari event:", event.location?.polygon || []);
+        const monitoringList = await Monitoring.find({ event_id: eventId }).lean();
 
-        console.log("Supervisor ID:", event.supervisor.id);
+        // 3. Buat map monitoring { userId: monitoringRecord }
+        const monitoringMap = {};
+        monitoringList.forEach(m => {
+            if (!monitoringMap[m.user_id?.toString()]) {
+                monitoringMap[m.user_id?.toString()] = m;
+            }
+        });
 
         res.status(200).json({
             event: {
@@ -160,6 +149,7 @@ exports.getAttendancesByEvent = async (req, res) => {
             total_absen: attendanceList.length,
             absensi: attendanceList,
             karyawan: karyawanArray,
+            monitoring: monitoringMap,
         });
 
     } catch (error) {
@@ -211,20 +201,14 @@ exports.remindUserPush = async (req, res) => {
     try {
         const { userId, eventId } = req.params;
 
-        console.log("User  ID:", userId);
-        console.log("Event ID:", eventId);
-
         const user = await User.findById(userId);
 
         if (!user) {
-            console.log("User tidak ditemukan.");
-            console.log("User tidak memiliki pushSubscription");
             return res.status(404).json({ message: "User tidak ditemukan atau tidak memiliki subscription" });
         }
 
         const event = await Event.findById(eventId);
         if (!event) {
-            console.log("Event tidak ditemukan.");
             return res.status(404).json({ message: 'Event tidak ditemukan.' });
         }
 
@@ -338,12 +322,12 @@ exports.monitoringLocation = async (req, res) => {
 
             const notificationPayload = {
                 title: 'Monitoring Lokasi',
-                body: `${user.name} keluar dari area kerja pada event ${event.name} pukul ${new Date().toLocaleTimeString('id-ID')}`,
+                body: `Karyawan atas nama ${user.name}, Telah keluar dari lokasi acara, ${event.name} pukul ${new Date().toLocaleTimeString('id-ID')}`,
             };
 
             subscription.forEach(sub => {
                 webpush.sendNotification(sub.subscription, notificationPayload).catch(error => {
-                    console.error("Gagal mengirim notifikasi:", error);
+                    console.log("Gagal mengirim notifikasi:", error.statusCode);
                 });
             });
         }
@@ -358,5 +342,167 @@ exports.monitoringLocation = async (req, res) => {
     }
 }
 
+exports.getActiveEventByUser = async (req, res) => {
+    try {
+        const { user_id } = req.params;
+
+        const event = await Event.findOne({
+            status: "berlangsung",
+            $or: [
+                { "gudang.user_id": user_id },
+                { "dapur.penanggung_jawab.user_id": user_id },
+                { "supervisor.id": user_id }
+            ]
+        }).lean();
+
+        if (!event) return res.status(404).json({ message: "Tidak ada event berlangsung" });
+
+        const attendance = await Attendance.findOne({
+            user_id,
+            event_id: event._id
+        });
+
+        const attendanceStatus = {
+            prepare: attendance?.prepare?.isPresent || false,
+            service: attendance?.service?.isPresent || false,
+        };
+
+        // ✅ Tambahkan logika faseAktif di sini
+        const now = new Date();
+
+        let faseAktif = null;
+
+        if (event.date_prepare && event.time_start_prepare && event.time_end_prepare) {
+            const prepareStart = new Date(event.date_prepare);
+            const [psh, psm] = event.time_start_prepare.split(":");
+            prepareStart.setHours(+psh, +psm);
+
+            const prepareEnd = new Date(event.date_prepare);
+            const [peh, pem] = event.time_end_prepare.split(":");
+            prepareEnd.setHours(+peh, +pem);
+
+            if (now >= prepareStart && now <= prepareEnd) faseAktif = "prepare";
+        }
+
+        if (event.date_service && event.time_start_service && event.time_end_service) {
+            const serviceStart = new Date(event.date_service);
+            const [ssh, ssm] = event.time_start_service.split(":");
+            serviceStart.setHours(+ssh, +ssm);
+
+            const serviceEnd = new Date(event.date_service);
+            const [seh, sem] = event.time_end_service.split(":");
+            serviceEnd.setHours(+seh, +sem);
+
+            if (now >= serviceStart && now <= serviceEnd) faseAktif = "service";
+        }
+
+        res.status(200).json({ ...event, attendanceStatus, faseAktif });
+
+    } catch (err) {
+        res.status(500).json({ message: "Gagal ambil event aktif", error: err.message });
+    }
+};
 
 
+
+exports.periodicFaceVerification = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!req.file) {
+            return res.status(400).json({ message: "Tidak ada file yang diupload" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user || !user.face_data) {
+            return res.status(404).json({ message: "User tidak ditemukan atau belum memiliki data wajah" });
+        }
+
+        const newDescriptor = await detectFace(req.file.buffer);
+        if (!newDescriptor) {
+            return res.status(400).json({ message: "Wajah tidak terdeteksi!", success: false });
+        }
+
+        const storedDescriptor = JSON.parse(user.face_data);
+        const Face_Matching = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
+        const threshold = 0.6;
+        const face_match = Face_Matching < threshold;
+
+        if (!face_match) {
+            return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
+        }
+
+        res.status(200).json({
+            message: "Verifikasi wajah berhasil!",
+            success: true,
+            distance: Face_Matching,
+            face_match
+        });
+    } catch (error) {
+        console.error("Error during periodic face verification:", error);
+        res.status(500).json({
+            success: false,
+            message: "Terjadi kesalahan server",
+            error: error.message || "Internal Server Error"
+        });
+    }
+};
+
+// Periodic Face Verification Failure Handler
+exports.periodicFaceFail = async (req, res) => {
+    try {
+        const { userId, eventId } = req.body;
+        const { latitude, longitude, note } = req.body;
+
+        // 1. Simpan ke Monitoring (catat kegagalan verifikasi)
+        await Monitoring.create({
+            user_id: userId,
+            event_id: eventId,
+            timestamp: new Date(),
+            location: {
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude)
+            },
+            note: note || 'Gagal verifikasi wajah periodik',
+        });
+
+        // 2. Cari event dan supervisor
+        const event = await Event.findById(eventId).populate('supervisor.id', 'name');
+        if (!event) {
+            return res.status(404).json({ message: 'Event tidak ditemukan.' });
+        }
+        const supervisorId = event.supervisor?.id?._id;
+        const user = await User.findById(userId);
+
+        // 3. Kirim push notification ke supervisor jika ada
+        if (supervisorId) {
+            const subscription = await Subscription.find({ user_id: supervisorId });
+            const notificationPayload = JSON.stringify({
+                title: 'Gagal Verifikasi Wajah',
+                body: `Karyawan atas nama ${user?.name || '-'} gagal melakukan verifikasi wajah periodik pada event ${event.name}.`,
+                icon: '/icons/LOGO-PERUSAHAAN.ico',
+            });
+            for (const sub of subscription) {
+                try {
+                    await webpush.sendNotification(sub.subscription, notificationPayload);
+                } catch (err) {
+                    if (err.statusCode === 410 || err.statusCode === 404) {
+                        await Subscription.deleteOne({ _id: sub._id });
+                    }
+                }
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Kegagalan verifikasi wajah periodik telah dicatat dan supervisor telah diberi notifikasi.'
+        });
+    } catch (error) {
+        console.error('Error in periodicFaceFail:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Terjadi kesalahan server',
+            error: error.message || 'Internal Server Error'
+        });
+    }
+};

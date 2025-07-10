@@ -21,7 +21,7 @@ export default function AttendanceData() {
                 setEvents(response.data.data);
                 console.log("Data Event:", response.data.data);
             } catch (error) {
-                console.error("Terjadi Error Saat Mengambil Data Event:", error);
+                console.log("Terjadi Error Saat Mengambil Data Event:", error);
             }
         }
         fetchEvent();

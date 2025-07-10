@@ -45,41 +45,44 @@ export default function Events() {
                 setEvents(sorted);
                 console.log("Data Event:", response.data.data);
             } catch (error) {
-                console.error("Terjadi Error Saat Mengambil Data Event:", error);
+                console.log("Terjadi Error Saat Mengambil Data Event:", error);
             }
         }
         fetchEvent();
     }, []);
 
     const deleteEvent = async (eventID) => {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/${eventID}`);
-        const event = response.data.data;
-        const confirm = await Swal.fire({
-            title: `Hapus ${event.name}?`,
-            text: "Tindakan ini tidak bisa dibatalkan.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Ya",
-            cancelButtonText: "Tidak",
-        });
+        try {
+            // Ambil info event untuk Swal (opsional)
+            const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/${eventID}`);
+            const event = data.data;
 
-        if (confirm.isConfirmed) {
-            try {
-                const res = await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/delete/${eventID}`);
-                if (res.status === 200) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil!!!',
-                        text: res.data.message,
-                    });
-                    setEvents(events.filter(e => e._id !== eventID));
-                }
-            } catch (error) {
-                Swal.fire("Error", "Gagal menghapus event", "error");
-            }
+            const confirm = await Swal.fire({
+                title: `Hapus ${event.name}?`,
+                text: "Tindakan ini tidak bisa dibatalkan.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Ya",
+                cancelButtonText: "Tidak",
+            });
 
+            if (!confirm.isConfirmed) return;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!!!',
+                text: "Berhasil Menghapus Acara!",
+            });
+
+            setEvents(prev => prev.filter(e => e._id !== eventID));
+
+            await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/delete/${eventID}`);
+
+        } catch (error) {
+            Swal.fire("Error", "Gagal menghapus event", "error");
+            console.error("Error saat menghapus event:", error);
         }
-    }
+    };
 
     useEffect(() => {
         const filtered = events.filter(event =>

@@ -91,7 +91,7 @@ export default function Profile() {
                     });
                 }
             } catch (error) {
-                console.error("TERJADI KESALAHAN SAAT MENGUBAH PASSWORD", error)
+                console.log("TERJADI KESALAHAN SAAT MENGUBAH PASSWORD", error)
                 Swal.fire({
                     icon: 'error',
                     title: 'Gagal!!!',
@@ -143,7 +143,7 @@ export default function Profile() {
                 }
 
             } catch (error) {
-                console.error("TERJADI KESALAHAN SAAT MENGUBAH NOMOR TELEPON", error)
+                console.log("TERJADI KESALAHAN SAAT MENGUBAH NOMOR TELEPON", error)
                 Swal.fire({
                     icon: 'error',
                     title: 'Gagal!!!',
@@ -190,7 +190,7 @@ export default function Profile() {
                         <button className="bg-pink-500 text-white py-1 px-1 text-sm rounded hover:bg-pink-700" onClick={handleChangePhone}>
                             Ubah No Telepon
                         </button>
-                        <Link href={`/employees/${slug}/profile/change-face`} className="bg-emerald-500 text-white py-1 px-1 text-sm rounded hover:bg-emerald-700">
+                        <Link href={`/employees/${slug}/profile/change-face`} className="bg-emerald-500 text-white py-1 px-1 text-sm rounded text-center hover:bg-emerald-700">
                             Ubah Data Wajah
                         </Link>
                     </div>

@@ -37,7 +37,7 @@ export default function Users() {
                 setUsers(response.data.data);
                 setFilteredUsers(response.data.data);
             } catch (error) {
-                console.error("Terjadi Error Saat Mengambil Data Pengguna.:", error);
+                console.log("Terjadi Error Saat Mengambil Data Pengguna.:", error);
             }
         };
         fetchUsers();
@@ -101,7 +101,6 @@ export default function Users() {
                     <div style="text-align: left; font-size: 16px"> 
                     <p><strong>ID:</strong> ${user._id}</p>
                     <p><strong>Nama:</strong> ${user.name}</p>
-                    <p><strong>Slug:</strong> ${user.slug}</p>
                     <p><strong>Login:</strong> ${user.ID_Login}</p>
                     <p><strong>No Telp:</strong> ${user.phone}</p>
                     <p><strong>Supervisor:</strong> ${user.is_supervisor_candidate ? "ya" : "Tidak"}</p>

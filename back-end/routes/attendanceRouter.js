@@ -10,5 +10,7 @@ router.post("/remind/:userId/event/:eventId", attendanceController.remindUserPus
 router.post("/push-subscription", attendanceController.saveSubcription);
 router.get("/:eventId", attendanceController.getAttendancesByEvent);
 router.post("/out-of-bounds", attendanceController.monitoringLocation);
-
+router.get("/active/:user_id", attendanceController.getActiveEventByUser);
+router.post("/periodic-face-verification", upload.single("face"), attendanceController.periodicFaceVerification);
+router.post("/periodic-face-fail", attendanceController.periodicFaceFail);
 module.exports = router;

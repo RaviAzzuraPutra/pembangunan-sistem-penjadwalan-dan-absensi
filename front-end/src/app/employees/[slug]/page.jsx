@@ -2,7 +2,6 @@
 import Link from "next/link"
 import Image from "next/image"
 import AuthCheck from "../../../utils/authCheck"
-import useLocationMonitoring from "../../../utils/useLocationMonitoring";
 import { useRouter, useParams } from "next/navigation"
 import axios from "axios"
 import { useEffect, useState } from "react"
@@ -24,7 +23,7 @@ export default function Employees() {
                 console.log("Response full:", response.data);
                 setEvents(response.data.data);
             } catch (error) {
-                console.error("Gagal mengambil data event:", error);
+                console.log("Gagal mengambil data event:", error);
             } finally {
                 setLoading(false);
             }
@@ -32,31 +31,6 @@ export default function Employees() {
 
         if (slug) fetchEvents();
     }, [slug]);
-
-    useEffect(() => {
-        if (!navigator.geolocation) {
-            console.warn("Geolocation tidak didukung");
-            return;
-        }
-
-        navigator.permissions?.query({ name: "geolocation" }).then((result) => {
-            if (result.state === "granted" || result.state === "prompt") {
-                // langsung jalankan useLocationMonitoring
-                console.log("Permission lokasi ok:", result.state);
-            } else if (result.state === "denied") {
-                alert("Akses lokasi ditolak, harap izinkan untuk memantau lokasi.");
-            }
-        });
-    }, []);
-
-
-    const runningEvent = events.find(ev => ev.status === "berlangsung");
-
-    useLocationMonitoring({
-        eventInfo: runningEvent,
-        userId: slug,
-        setStatus,
-    });
 
     const handleLogout = async () => {
         try {
@@ -67,7 +41,7 @@ export default function Employees() {
                 router.replace("/login");
             }
         } catch (error) {
-            console.error("Logout failed:", error);
+            console.log("Logout failed:", error);
             router.replace("/login");
         }
     }
@@ -114,7 +88,7 @@ export default function Employees() {
                 setEvents(updatedEvents);
             }
         } catch (err) {
-            console.error("Gagal konfirmasi:", err);
+            console.log("Gagal konfirmasi:", err);
         }
     };
 

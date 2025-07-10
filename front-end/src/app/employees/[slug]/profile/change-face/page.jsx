@@ -25,7 +25,7 @@ export default function ChangeFace() {
                     setCameraActive(true)
                 }
             } catch (error) {
-                console.error("ERROR SAAT MENGAKSES KAMERA", error)
+                console.log("ERROR SAAT MENGAKSES KAMERA", error)
             }
         }
 

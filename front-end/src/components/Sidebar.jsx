@@ -27,7 +27,7 @@ export default function Sidebar() {
                 router.replace("/login");
             }
         } catch (error) {
-            console.error("Logout failed:", error);
+            console.log("Logout failed:", error);
             router.replace("/login");
         }
 
