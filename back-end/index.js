@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+require("dotenv").config();
 const cors = require("cors");
 const whatsappRouter = require("./routes/whatsappRouter");
 const userRouter = require("./routes/userRouter");
@@ -14,7 +15,6 @@ const cookieParser = require("cookie-parser");
 const StartEventStatusCron = require("./utils/event-status-update");
 const AutoAbsentCron = require("./utils/attencance-status");
 const AutoCantCron = require("./utils/auto-Cant");
-const AutoCanCron = require("./utils/auto-can");
 const connect = require("./utils/connect");
 
 const corsOptions = {
