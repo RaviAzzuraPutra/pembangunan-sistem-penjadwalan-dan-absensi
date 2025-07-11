@@ -18,7 +18,7 @@ const AutoCantCron = require("./utils/auto-Cant");
 const connect = require("./utils/connect");
 
 const corsOptions = {
-    origin: true,
+    origin: process.env.FRONTEND_ORIGIN,
     credentials: true,
 }
 
