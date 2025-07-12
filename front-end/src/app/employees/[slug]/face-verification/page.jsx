@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import Swal from "sweetalert2"
 import axios from "axios"
-import { loadModels, detectFace, analyzeFace } from "../../../../../../../utils/faceDetection";
+import { loadModels, detectFace, analyzeFace } from "../../../../utils/faceDetection";
 
 
 export default function Face_Verification() {
