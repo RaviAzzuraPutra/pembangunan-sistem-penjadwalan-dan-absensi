@@ -10,7 +10,7 @@ async function getFaceApi() {
     if (faceapi) return faceapi;
     // Only import in browser
     if (typeof window !== 'undefined') {
-        faceapi = await import('face-api.js');
+        faceapi = await import('face-api.js/dist/face-api.esm.js');
         return faceapi;
     }
     throw new Error('face-api.js only available in browser');
