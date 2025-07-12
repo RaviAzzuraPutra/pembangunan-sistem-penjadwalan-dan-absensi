@@ -2,7 +2,7 @@
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { getUserSession } from "../../../../utils/getSession";
+import { getUserSession } from "../utils/getSession";
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import axios from "axios";
