@@ -49,10 +49,10 @@ jobs:
             docker image rm -f ${{ secrets.DOCKER_USERNAME }}/${{ vars.IMAGE_NAME }} || true
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{ vars.IMAGE_NAME }}:latest
             docker run -d -p 5001:5001 --name ${{ vars.CONTAINER_NAME }} \
-              -e MONGODB_URL=${{ secrets.MONGODB_URL }} \
-              -e PORT=${{ secrets.PORT }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -e VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }} \
-              -e VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }} \
-              -e FRONTEND_ORIGIN=${{ secrets.FRONTEND_ORIGIN }} \
+              -e MONGODB_URL="${{ secrets.MONGODB_URL }}" \
+              -e PORT="${{ secrets.PORT }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              -e VAPID_PUBLIC_KEY="${{ secrets.VAPID_PUBLIC_KEY }}" \
+              -e VAPID_PRIVATE_KEY="${{ secrets.VAPID_PRIVATE_KEY }}" \
+              -e FRONTEND_ORIGIN="${{ secrets.FRONTEND_ORIGIN }}" \
               ${{ secrets.DOCKER_USERNAME }}/${{ vars.IMAGE_NAME }}:latest
