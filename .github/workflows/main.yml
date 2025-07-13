@@ -23,6 +23,7 @@ jobs:
       - name: Build and Push
         uses: docker/build-push-action@v4
         with:
+          context: ./back-end
           file: ./back-end/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/${{ vars.IMAGE_NAME }}:latest
