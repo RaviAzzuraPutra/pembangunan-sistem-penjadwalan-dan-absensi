@@ -21,3 +21,5 @@ COPY . .
 EXPOSE 5001
 
 CMD ["node", "index.js"]
+
+# Note: Ensure that the index.js file is present in the root of your application directory.

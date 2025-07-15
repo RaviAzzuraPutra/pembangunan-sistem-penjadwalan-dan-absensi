@@ -56,3 +56,4 @@ jobs:
               -e VAPID_PRIVATE_KEY="${{ secrets.VAPID_PRIVATE_KEY }}" \
               -e FRONTEND_ORIGIN="${{ secrets.FRONTEND_ORIGIN }}" \
               ${{ secrets.DOCKER_USERNAME }}/${{ vars.IMAGE_NAME }}:latest
+              
