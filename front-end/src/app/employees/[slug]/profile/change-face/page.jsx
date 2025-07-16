@@ -79,7 +79,7 @@ export default function ChangeFace() {
 
                 router.push(`/employees/${slug}/profile?success=true&message=${encodeURIComponent(res.data.message)}`)
             } catch (err) {
-                const errorMsg = err.response?.data?.message || "Gagal memperbarui wajah"
+                const errorMsg = err.response?.data?.message
                 Swal.fire({
                     icon: "error",
                     title: "Gagal!!!",

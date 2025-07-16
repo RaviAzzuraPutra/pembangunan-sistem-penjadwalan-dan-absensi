@@ -168,10 +168,6 @@ exports.selfUpdateUser = async (req, res) => {
         }
 
         if (req.file) {
-            console.log("Nama file:", req.file.originalname);
-            console.log("Tipe file:", req.file.mimetype);
-            console.log("Ukuran file:", req.file.size);
-            console.log("Buffer file tersedia:", !!req.file.buffer);
             const faceDescriptor = await detectFace(req.file.buffer);
 
             if (!faceDescriptor) {
@@ -210,9 +206,11 @@ exports.selfUpdateUser = async (req, res) => {
             success: true,
         });
     } catch (error) {
+        console.error("❌ Error di selfUpdateUser:", error);
         return res.status(500).json({
-            message: "Terjadi kesalahan saat memproses data",
+            message: error.message,
             error: error.message,
+            stack: error.stack,
             success: false,
         });
     }
