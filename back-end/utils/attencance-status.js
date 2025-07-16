@@ -107,3 +107,4 @@ async function markAbsent(eventId, participants, tahap) {
 }
 
 module.exports = AutoAbsentCron;
+
