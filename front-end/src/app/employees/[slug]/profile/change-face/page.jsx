@@ -58,7 +58,14 @@ export default function ChangeFace() {
         context.restore();
 
         canvas.toBlob(async blob => {
-            if (!blob) return
+            if (!blob || blob.size === 0) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Capture Gagal",
+                    text: "Gagal mengambil gambar. Coba ulangi.",
+                });
+                return;
+            }
 
             const formData = new FormData()
             formData.append("face", blob)

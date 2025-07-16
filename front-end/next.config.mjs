@@ -5,7 +5,7 @@ const nextConfig = {
 };
 
 export default withPWA({
-    dest: "public", // ✅ HARUS di sini, bukan di dalam `nextConfig`
+    dest: "public",
     register: true,
     skipWaiting: true,
     swSrc: 'src/sw-custom.js',

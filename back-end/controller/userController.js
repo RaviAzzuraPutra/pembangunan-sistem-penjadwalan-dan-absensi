@@ -138,93 +138,83 @@ exports.deleteUser = async (req, res) => {
 exports.selfUpdateUser = async (req, res) => {
 
     try {
-        upload.single("face")(req, res, async (error) => {
-            if (error) {
-                return res.status(500).json({
-                    message: "Terjadi Kesalahan Saat Upload File",
-                    error: error.message,
-                    success: false,
-                });
-            }
+        const slug = req.params.slug;
+        const password = req.body.password;
+        const phone = req.body.phone;
 
-            const slug = req.params.slug;
-            const password = req.body.password;
-            const phone = req.body.phone;
-
-            const user = await User.findOne({ slug: slug });
-            if (!user) {
-                return res.status(404).json({
-                    message: "User tidak ditemukan",
-                    success: false,
-                });
-            }
-
-            const updatedFields = [];
-
-            if (password) {
-                const hashedPassword = await bcrypt.hash(password, 11);
-                user.password = hashedPassword;
-                updatedFields.push("password");
-            }
-
-            if (phone) {
-                let normalizedPhone = phone;
-                if (phone.startsWith("0")) {
-                    normalizedPhone = "62" + phone.slice(1);
-                }
-                user.phone = normalizedPhone;
-                updatedFields.push("phone");
-            }
-
-            if (req.file) {
-                console.log("Nama file:", req.file.originalname);
-                console.log("Tipe file:", req.file.mimetype);
-                console.log("Ukuran file:", req.file.size);
-                console.log("Buffer file tersedia:", !!req.file.buffer);
-                const faceDescriptor = await detectFace(req.file.buffer);
-
-                if (!faceDescriptor) {
-                    return res.status(400).json({
-                        message: "Gagal mendeteksi wajah. Pastikan wajah terlihat jelas dan menghadap kamera.",
-                        success: false,
-                    });
-                }
-
-                user.face_data = JSON.stringify(Array.from(faceDescriptor));
-                updatedFields.push("face_data");
-            }
-
-            await user.save();
-
-            let message = "Berhasil memperbarui data!";
-
-            // Optional: Ubah pesan jika hanya satu field yang diubah
-            if (updatedFields.length === 1) {
-                switch (updatedFields[0]) {
-                    case "password":
-                        message = "Berhasil Mengubah Password!";
-                        break;
-                    case "phone":
-                        message = "Berhasil Mengubah No Telephon!";
-                        break;
-                    case "face_data":
-                        message = "Berhasil Mengubah Data Wajah!";
-                        break;
-                }
-            }
-
-            return res.status(200).json({
-                message,
-                data: user,
-                success: true,
+        const user = await User.findOne({ slug: slug });
+        if (!user) {
+            return res.status(404).json({
+                message: "User tidak ditemukan",
+                success: false,
             });
-        })
+        }
+
+        const updatedFields = [];
+
+        if (password) {
+            const hashedPassword = await bcrypt.hash(password, 11);
+            user.password = hashedPassword;
+            updatedFields.push("password");
+        }
+
+        if (phone) {
+            let normalizedPhone = phone;
+            if (phone.startsWith("0")) {
+                normalizedPhone = "62" + phone.slice(1);
+            }
+            user.phone = normalizedPhone;
+            updatedFields.push("phone");
+        }
+
+        if (req.file && req.file.buffer) {
+            console.log("Nama file:", req.file.originalname);
+            console.log("Tipe file:", req.file.mimetype);
+            console.log("Ukuran file:", req.file.size);
+            console.log("Buffer file tersedia:", !!req.file.buffer);
+            const faceDescriptor = await detectFace(req.file.buffer);
+
+            if (!faceDescriptor) {
+                return res.status(400).json({
+                    message: "Gagal mendeteksi wajah. Pastikan wajah terlihat jelas dan menghadap kamera.",
+                    success: false,
+                });
+            }
+
+            user.face_data = JSON.stringify(Array.from(faceDescriptor));
+            updatedFields.push("face_data");
+        }
+
+        await user.save();
+
+        let message = "Berhasil memperbarui data!";
+
+        // Optional: Ubah pesan jika hanya satu field yang diubah
+        if (updatedFields.length === 1) {
+            switch (updatedFields[0]) {
+                case "password":
+                    message = "Berhasil Mengubah Password!";
+                    break;
+                case "phone":
+                    message = "Berhasil Mengubah No Telephon!";
+                    break;
+                case "face_data":
+                    message = "Berhasil Mengubah Data Wajah!";
+                    break;
+            }
+        }
+
+        return res.status(200).json({
+            message,
+            data: user,
+            success: true,
+        });
     } catch (error) {
         return res.status(500).json({
-            message: "Terjadi kesalahan saat memperbarui data user!",
+            message: "Terjadi kesalahan saat memproses data",
             error: error.message,
             success: false,
-        })
+        });
     }
 }
 

@@ -1,4 +1,5 @@
 import "./globals.css";
+import ServiceWorkerRegistration from "../components/ServiceWorkersRegistration"
 
 
 export const metadata = {
@@ -16,7 +17,10 @@ export default function RootLayout({ children }) {
         <meta httpEquiv="Cache-Control" content="no-store" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegistration />
+        {children}
+      </body>
     </html>
   )
 }
