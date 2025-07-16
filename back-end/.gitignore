@@ -3,5 +3,3 @@ node_modules
 .wwebjs_auth
 package-lock.json
 .wwebjs_cache
-
-face-model/
