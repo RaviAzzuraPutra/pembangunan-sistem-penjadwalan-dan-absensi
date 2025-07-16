@@ -23,16 +23,21 @@ const loadModels = async () => {
 const detectFace = async (imageBuffer) => {
     await loadModels();
 
-    const image = await canvas.loadImage(imageBuffer);
-    const detections = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })).withFaceLandmarks().withFaceDescriptor();
+    try {
+        const image = await canvas.loadImage(imageBuffer);
+        const detections = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })).withFaceLandmarks().withFaceDescriptor();
 
-    if (!detections) {
-        // Tidak melempar error agar controller bisa menanganinya secara halus
+        if (!detections) {
+            // Tidak melempar error agar controller bisa menanganinya secara halus
+            return null;
+        }
+
+        return detections.descriptor;
+    } catch (error) {
+        console.error("Error detecting face:", error);
         return null;
     }
-
-    return detections.descriptor;
-}
+};
 
 module.exports = {
     detectFace

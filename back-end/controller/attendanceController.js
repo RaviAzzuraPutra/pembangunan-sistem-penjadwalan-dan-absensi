@@ -160,6 +160,7 @@ exports.getAttendancesByEvent = async (req, res) => {
 
 exports.saveSubcription = async (req, res) => {
     try {
+        console.log("MENERIMA REQUEST SUBSCRIPTION:", req.body);
         const { userId, subscription } = req.body;
 
         const endpoint = subscription.endpoint;

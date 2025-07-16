@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import axios from "axios"
 import { loadModels, detectFace } from "../../../../../utils/faceDetection";
+import Swal from "sweetalert2";
 
 export default function ChangeFace() {
     const videoRef = useRef(null)
@@ -72,6 +73,11 @@ export default function ChangeFace() {
                 router.push(`/employees/${slug}/profile?success=true&message=${encodeURIComponent(res.data.message)}`)
             } catch (err) {
                 const errorMsg = err.response?.data?.message || "Gagal memperbarui wajah"
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal!!!",
+                    text: errorMsg,
+                })
                 router.push(`/employees/${slug}/profile?success=false&message=${encodeURIComponent(errorMsg)}`)
             }
         }, "image/jpeg")

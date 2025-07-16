@@ -177,7 +177,19 @@ exports.selfUpdateUser = async (req, res) => {
             }
 
             if (req.file) {
+                console.log("Nama file:", req.file.originalname);
+                console.log("Tipe file:", req.file.mimetype);
+                console.log("Ukuran file:", req.file.size);
+                console.log("Buffer file tersedia:", !!req.file.buffer);
                 const faceDescriptor = await detectFace(req.file.buffer);
+
+                if (!faceDescriptor) {
+                    return res.status(400).json({
+                        message: "Gagal mendeteksi wajah. Pastikan wajah terlihat jelas dan menghadap kamera.",
+                        success: false,
+                    });
+                }
+
                 user.face_data = JSON.stringify(Array.from(faceDescriptor));
                 updatedFields.push("face_data");
             }
