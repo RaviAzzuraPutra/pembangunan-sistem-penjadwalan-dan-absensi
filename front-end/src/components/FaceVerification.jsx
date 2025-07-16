@@ -103,7 +103,7 @@ export default function FaceVerification() {
         const enableCamera = async () => {
             try {
                 await loadModels();
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, facingMode: "user" })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
                     setCameraActive(true)
@@ -250,6 +250,7 @@ export default function FaceVerification() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
+                        style={{ transform: "scaleX(1)" }}
                     />
                     {showValidationText && (
                         <p className="text-center font-semibold text-black">{challengeText}</p>

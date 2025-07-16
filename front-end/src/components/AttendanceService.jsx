@@ -66,7 +66,7 @@ export default function AttendanceService() {
         const enableCamera = async () => {
             try {
                 await loadModels();
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, facingMode: "user" })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
                     setCameraActive(true)
@@ -232,6 +232,7 @@ export default function AttendanceService() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
+                        style={{ transform: "scaleX(1)" }}
                     />
 
                     {showValidationText && (

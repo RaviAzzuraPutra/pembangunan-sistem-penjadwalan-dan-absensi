@@ -63,7 +63,7 @@ export default function AttendancePrepare() {
         const enableCamera = async () => {
             try {
                 await loadModels();
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, facingMode: "user" })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
                     setCameraActive(true)
@@ -193,7 +193,7 @@ export default function AttendancePrepare() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 200); // setiap 200ms
+            }, 1000); // setiap 200ms
         }
 
         return () => clearInterval(interval);
@@ -225,6 +225,7 @@ export default function AttendancePrepare() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
+                        style={{ transform: "scaleX(1)" }}
                     />
 
                     {showValidationText && (

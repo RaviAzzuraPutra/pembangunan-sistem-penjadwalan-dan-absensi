@@ -19,7 +19,7 @@ export default function ChangeFace() {
         const enableCamera = async () => {
             try {
                 await loadModels(); // Load face detection models if needed
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, facingMode: "user" })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream
                     setCameraActive(true)
@@ -108,6 +108,7 @@ export default function ChangeFace() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
+                        style={{ transform: "scaleX(1)" }}
                     />
                     <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>
