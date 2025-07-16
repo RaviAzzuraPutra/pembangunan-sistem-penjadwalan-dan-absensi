@@ -167,7 +167,7 @@ exports.selfUpdateUser = async (req, res) => {
             updatedFields.push("phone");
         }
 
-        if (req.file && req.file.buffer) {
+        if (req.file) {
             console.log("Nama file:", req.file.originalname);
             console.log("Tipe file:", req.file.mimetype);
             console.log("Ukuran file:", req.file.size);
