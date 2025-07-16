@@ -39,6 +39,7 @@ export default function ChangeFace() {
     }, []);
 
     const handleCapture = async () => {
+
         if (!videoRef.current) return
 
         const canvas = document.createElement("canvas")
@@ -48,7 +49,12 @@ export default function ChangeFace() {
 
         if (!context) return
 
-        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+        // Flip context agar hasil capture tidak mirror
+        context.save();
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        context.restore();
 
         canvas.toBlob(async blob => {
             if (!blob) return
@@ -76,7 +82,7 @@ export default function ChangeFace() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 200); // setiap 200ms
+            }, 800); // setiap 200ms
         }
 
         return () => clearInterval(interval);
@@ -108,7 +114,7 @@ export default function ChangeFace() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
-                        style={{ transform: "scaleX(1)" }}
+                        style={{ transform: "scaleX(-1)" }}
                     />
                     <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>

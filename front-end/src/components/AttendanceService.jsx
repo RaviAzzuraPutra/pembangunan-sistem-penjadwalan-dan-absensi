@@ -200,7 +200,7 @@ export default function AttendanceService() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 200); // setiap 200ms
+            }, 800); // setiap 200ms
         }
 
         return () => clearInterval(interval);
@@ -232,7 +232,7 @@ export default function AttendanceService() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
-                        style={{ transform: "scaleX(1)" }}
+                        style={{ transform: "scaleX(-1)" }}
                     />
 
                     {showValidationText && (

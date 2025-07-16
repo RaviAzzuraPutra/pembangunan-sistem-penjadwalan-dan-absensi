@@ -233,7 +233,7 @@ export default function FaceVerification() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 200); // setiap 200ms
+            }, 800); // setiap 200ms
         }
 
         return () => clearInterval(interval);
@@ -250,7 +250,7 @@ export default function FaceVerification() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
-                        style={{ transform: "scaleX(1)" }}
+                        style={{ transform: "scaleX(-1)" }}
                     />
                     {showValidationText && (
                         <p className="text-center font-semibold text-black">{challengeText}</p>

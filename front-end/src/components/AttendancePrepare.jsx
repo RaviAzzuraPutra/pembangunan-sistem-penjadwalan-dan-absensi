@@ -193,7 +193,7 @@ export default function AttendancePrepare() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 1000); // setiap 200ms
+            }, 800); // setiap 200ms
         }
 
         return () => clearInterval(interval);
@@ -225,7 +225,7 @@ export default function AttendancePrepare() {
                         playsInline
                         muted
                         className="w-full aspect-[3/4] object-cover"
-                        style={{ transform: "scaleX(1)" }}
+                        style={{ transform: "scaleX(-1)" }}
                     />
 
                     {showValidationText && (

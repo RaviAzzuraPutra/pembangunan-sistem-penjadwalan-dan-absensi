@@ -19,7 +19,7 @@ async function getFaceApi() {
 export async function loadModels() {
     const faceapi = await getFaceApi();
     const MODEL_URL = '/models';
-    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
     await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
     await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 }
@@ -38,7 +38,7 @@ export async function detectFace(video, canvas) {
 
     faceapi.matchDimensions(canvas, displaySize);
 
-    const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 });
+    const options = new faceapi.TinyFaceDetectorOptions({ minConfidence: 0.5 });
     const detections = await faceapi.detectSingleFace(video, options);
 
     const ctx = canvas.getContext('2d');
@@ -75,7 +75,7 @@ export async function detectFace(video, canvas) {
 export async function analyzeFace(video) {
     const faceapi = await getFaceApi();
     const detection = await faceapi
-        .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ minConfidence: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
 
