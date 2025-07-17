@@ -5,9 +5,13 @@ import { registerSubscription } from "../utils/registerSubscription";
 import { getUserSession } from "../utils/getSession";
 
 export default function PushManager({ children }) {
+    console.log("PushManager: useEffect dijalankan");
+    console.log(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, "VAPID PUBLIC KEY");
     useEffect(() => {
         const doRegister = async () => {
+            console.log("PushManager: mulai doRegister");
             const session = await getUserSession();
+            onsole.log("PushManager: session →", session);
 
             // Karena getUserSession() mengembalikan objek user langsung, periksa session.id
             if (!session?.id) {

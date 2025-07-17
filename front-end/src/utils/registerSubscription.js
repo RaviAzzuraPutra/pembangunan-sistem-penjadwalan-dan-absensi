@@ -24,12 +24,18 @@ export const registerSubscription = async (userId) => {
             await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/push-subscription`, {
                 userId,
                 subscription
+            }, {
+                withCredentials: true
             });
 
             console.log("Sending subscription:", { userId, subscription });
 
         } catch (error) {
             console.log("Error during push subscription:", error);
+            if (error.response) {
+                console.error("→ response data:", error.response.data);
+                console.error("→ status:", error.response.status);
+            }
         }
     }
 }
