@@ -1,26 +1,36 @@
 import axios from "axios";
 
-export const registerSubscription = async (userId) => {
+export default async function registerSubscription(userId) {
     if ("serviceWorker" in navigator && "PushManager" in window) {
         try {
             const reg = await navigator.serviceWorker.ready;
 
             const permission = await Notification.requestPermission();
+
             console.log("Permission:", permission);
+
             if (permission !== "granted") return;
 
+            console.log("Push Subscription dibatalkan karena permission:", permission);
+
             let subscription = await reg.pushManager.getSubscription();
+
+            console.log("Hasil getSubscription:", subscription);
+
             if (!subscription) {
                 subscription = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
                 });
+
                 console.log("Subscription baru berhasil dibuat:", subscription);
+
             } else {
                 console.log("Sudah ada subscription:", subscription);
             }
 
-            // Selalu kirim subscription ke backend (update/insert)
+            console.log("Mengirim subscription ke backend…");
+
             await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/push-subscription`, {
                 userId,
                 subscription
