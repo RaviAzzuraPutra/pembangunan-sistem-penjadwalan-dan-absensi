@@ -1,13 +1,20 @@
-// src/sw-custom.js
-
-// Workbox akan di-import oleh webpack; nama ini dipakai oleh next-pwa saat build
 import { precacheAndRoute } from "workbox-precaching";
 
-// Precache semua aset yang didefinisikan oleh Workbox
+// Aktifkan SW segera
+self.addEventListener("install", (event) => {
+    console.log("SW installed");
+    self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+    console.log("SW activated");
+    event.waitUntil(self.clients.claim());
+});
+
+// @ts-ignore
 precacheAndRoute(self.__WB_MANIFEST);
 
-// Tambahkan listener push di bawah ini:
-
+// Push Notification Handler
 self.addEventListener("push", event => {
     console.log("SW menerima push event:", event);
     const data = event.data?.json() || {};
@@ -26,6 +33,7 @@ self.addEventListener("push", event => {
     );
 });
 
+// Notifikasi diklik
 self.addEventListener("notificationclick", event => {
     console.log("SW notificationclick, data:", event.notification.data);
     event.notification.close();
