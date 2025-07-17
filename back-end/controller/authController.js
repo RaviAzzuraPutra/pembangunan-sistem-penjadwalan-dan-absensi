@@ -30,7 +30,7 @@ exports.login = async (req, res) => {
         res.cookie("token", token, {
             httpOnly: true,
             secure: true,
-            sameSite: "none",
+            sameSite: "lax",
             maxAge: 8 * 60 * 60 * 1000
         })
 
@@ -52,6 +52,7 @@ exports.login = async (req, res) => {
         })
     } catch (error) {
         console.error("Terjadi Error Di Function Login", error);
+        console.log("Login Error Response:", error.response?.data || error.message);
         return res.status(500).json({
             success: false,
             message: "Terjadi Kesalahan Pada Server!!!",

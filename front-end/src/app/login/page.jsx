@@ -35,6 +35,7 @@ export default function LoginPage() {
         } catch (error) {
             if (error.response && error.response.data && error.response.data.message) {
                 setError(error.response.data.message);
+                console.log("Login Error Response:", error.response?.data || error.message);
             } else {
                 setError("Terjadi kesalahan pada sistem.");
             }
