@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 exports.login = async (req, res) => {
-
     try {
         const { ID_Login, password } = req.body;
         const user = await User.findOne({ ID_Login }).populate("jobdesk");
@@ -30,7 +29,7 @@ exports.login = async (req, res) => {
         res.cookie("token", token, {
             httpOnly: true,
             secure: true,
-            sameSite: "lax",
+            sameSite: "none",
             maxAge: 8 * 60 * 60 * 1000
         })
 
