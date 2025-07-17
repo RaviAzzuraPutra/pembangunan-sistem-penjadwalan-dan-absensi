@@ -55,7 +55,8 @@ exports.login = async (req, res) => {
         console.log("Login Error Response:", error.response?.data || error.message);
         return res.status(500).json({
             success: false,
-            message: "Terjadi Kesalahan Pada Server!!!",
+            message: "Terjadi Kesalahan Pada Server!!!", error: error.message,
+            error: error.message
         })
     }
 }
