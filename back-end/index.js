@@ -17,7 +17,7 @@ const AutoAbsentCron = require("./utils/attencance-status");
 const AutoCantCron = require("./utils/auto-Cant");
 const connect = require("./utils/connect");
 
-const corsOptionsOrigin = {
+const allowedOrigins = {
     origin: process.env.FRONTEND_ORIGIN,
     credentials: true,
 }
