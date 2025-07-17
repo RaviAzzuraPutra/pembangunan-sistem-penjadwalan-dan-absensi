@@ -11,7 +11,7 @@ export default function PushManager({ children }) {
         const doRegister = async () => {
             console.log("PushManager: mulai doRegister");
             const session = await getUserSession();
-            onsole.log("PushManager: session →", session);
+            console.log("PushManager: session →", session);
 
             // Karena getUserSession() mengembalikan objek user langsung, periksa session.id
             if (!session?.id) {
