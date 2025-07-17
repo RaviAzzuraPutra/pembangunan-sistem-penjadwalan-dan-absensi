@@ -77,17 +77,16 @@ export default function InfoEventPageEmployees() {
 
                     const eventPolygon = turf.polygon([polygonCoords]);
                     const isInside = turf.booleanPointInPolygon(userLocation, eventPolygon);
-                    setInsideArea(isInside);
                     setUserPosition(position);
 
                     let fakeGpsSuspect = false;
 
-                    if (accuracy < 5 || accuracy > 500) { // Toleransi akurasi, sesuaikan!
+                    if (accuracy < 2 || accuracy > 200) {
                         console.log("Akurasi GPS mencurigakan:", accuracy);
                         fakeGpsSuspect = true;
                     }
 
-                    if (speed !== null && speed !== undefined && speed > 0.1 && accuracy < 100) { // Jika ada kecepatan terdeteksi saat user diam
+                    if (speed !== null && speed !== undefined && speed > 0.1 && accuracy < 100) {
                         console.log("Kecepatan terdeteksi saat user seharusnya diam:", speed);
                         fakeGpsSuspect = true;
                     }
@@ -133,8 +132,8 @@ export default function InfoEventPageEmployees() {
                             });
                     }
                     console.log("Geolocation error:", error);
-                    setInsideArea(false); // Pastikan tidak bisa absensi jika ada error lokasi
-                    setIsFakeGpsDetected(true); // Asumsikan error lokasi = fake GPS atau masalah serius
+                    setInsideArea(false);
+                    setIsFakeGpsDetected(true);
                 },
                 geoOptions
             );
@@ -214,6 +213,18 @@ export default function InfoEventPageEmployees() {
 
     const { event, role, participants } = eventInfo;
 
+    const mergedParticipants = participants
+        .filter(p => p.confirmation === "bisa")
+        .reduce((acc, curr) => {
+            const existing = acc.find(p => p.name === curr.name);
+            if (existing) {
+                existing.jobdesk += `, ${curr.jobdesk}`;
+            } else {
+                acc.push({ ...curr });
+            }
+            return acc;
+        }, []);
+
     return (
         <div className="min-h-screen p-5 space-y-7">
             <Link href={`/employees/${slug}`}>
@@ -249,7 +260,7 @@ export default function InfoEventPageEmployees() {
                     <h2 className="font-semibold mb-3">Daftar Karyawan Yang Mengikuti Acara</h2>
                     <div className="max-h-64 overflow-y-auto border p-3 rounded-md bg-white shadow-inner">
                         <ul className="space-y-3">
-                            {participants.map((p, index) => (
+                            {mergedParticipants.map((p, index) => (
                                 <li key={index} className="border p-2 rounded-md bg-gray-50">
                                     <p className="font-semibold">{p.name}</p>
                                     <p className="text-sm text-gray-600">Jobdesk: {p.jobdesk}</p>

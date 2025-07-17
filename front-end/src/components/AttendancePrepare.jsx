@@ -85,20 +85,70 @@ export default function AttendancePrepare() {
     const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
 
+        // Langkah 1: Tampilkan challenge dulu
+        setShowValidationText(true);
+        setChallengeText('');
+
+        let challengePassed = false;
+        const descriptors = [];
+
+        // Random challenge direction
+        const directions = ['left', 'right'];
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const challengeMessage = randomDir === 'left'
+            ? 'Gerakkan kepala ke KIRI'
+            : 'Gerakkan kepala ke KANAN';
+
+        setChallengeText(challengeMessage);
+
+        await new Promise(r => setTimeout(r, 500));
+
+        const videoWidth = videoRef.current.videoWidth;
+
+        const validateLoop = async () => {
+            for (let i = 0; i < 10; i++) {
+                const result = await analyzeFace(videoRef.current);
+                if (!result) continue;
+
+                descriptors.push(result.descriptor);
+
+                const nose = result.nose;
+                const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
+
+                if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
+                if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
+
+                await new Promise(r => setTimeout(r, 401));
+            }
+        };
+
+        await validateLoop();
+
+        setShowValidationText(false);
+
+        if (!challengePassed) {
+            Swal.fire({
+                icon: "error",
+                title: "Validasi Gagal!!!",
+                text: "Gerakan tidak sesuai tantangan."
+            });
+            return;
+        }
+
+        // Langkah 2: Ambil gambar dan kirim data ke backend
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
         const CTX = canvas.getContext("2d");
-        if (!CTX) return
+        if (!CTX) return;
 
-        CTX.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+        CTX.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
         canvas.toBlob(async blob => {
-            if (!blob) return
+            if (!blob) return;
 
-            const formData = new FormData()
+            const formData = new FormData();
             formData.append("face", blob, "selfie.jpg");
-            console.log("Captured Image Blob:", blob);
             formData.append("latitude", String(location.latitude));
             formData.append("longitude", String(location.longitude));
 
@@ -107,62 +157,7 @@ export default function AttendancePrepare() {
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
                     formData,
                     { headers: { "Content-Type": "multipart/form-data" } }
-                )
-
-
-                if (response.data.success) {
-                    setShowValidationText(true);
-                    setChallengeText('');
-
-                    let challengePassed = false;
-                    const descriptors = [];
-
-
-                    // Random challenge direction
-                    const directions = ['left', 'right'];
-                    const randomDir = directions[Math.floor(Math.random() * directions.length)];
-                    const challengeMessage = randomDir === 'left'
-                        ? 'Gerakkan kepala ke KIRI'
-                        : 'Gerakkan kepala ke KANAN';
-
-                    setChallengeText(challengeMessage);
-                    setShowValidationText(true);
-
-                    await new Promise(r => setTimeout(r, 500));
-
-                    const videoWidth = videoRef.current.videoWidth;
-
-                    const validateLoop = async () => {
-                        for (let i = 0; i < 10; i++) {
-                            const result = await analyzeFace(videoRef.current);
-                            if (!result) continue;
-
-                            descriptors.push(result.descriptor);
-
-                            const nose = result.nose;
-                            const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
-
-                            if (randomDir === 'left' && noseX < videoWidth / 2 - 30) challengePassed = true;
-                            if (randomDir === 'right' && noseX > videoWidth / 2 + 30) challengePassed = true;
-                            console.log(`NoseX: ${noseX}, Midpoint: ${videoWidth / 2}`);
-
-                            await new Promise(r => setTimeout(r, 401));
-                        }
-                    };
-
-                    await validateLoop();
-
-                    setShowValidationText(false);
-
-                    if (!challengePassed) {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Validasi Gagal!!!",
-                            text: "Gerakan tidak sesuai tantangan."
-                        });
-                        return;
-                    }
-                }
+                );
 
                 Swal.fire({
                     icon: 'success',
@@ -184,9 +179,9 @@ export default function AttendancePrepare() {
                     confirmButtonText: 'Tutup'
                 });
             }
-        }, "image/png")
-
+        }, "image/png");
     }
+
 
     useEffect(() => {
         let interval;

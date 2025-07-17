@@ -161,9 +161,8 @@ export default function FaceVerification() {
                     const nose = result.nose;
                     const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
 
-                    if (randomDir === 'left' && noseX < videoWidth / 2 - 30) challengePassed = true;
-                    if (randomDir === 'right' && noseX > videoWidth / 2 + 30) challengePassed = true;
-                    console.log(`NoseX: ${noseX}, Midpoint: ${videoWidth / 2}`);
+                    if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
+                    if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
 
                     await new Promise(r => setTimeout(r, 401));
                 }

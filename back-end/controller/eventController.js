@@ -875,13 +875,13 @@ exports.getEventInfoForEmployee = async (req, res) => {
         const participantData = [];
 
         // Supervisor
-        if (event.supervisor?.id) {
+        if (event.supervisor?.id && event.supervisor.confirmation === "bisa") {
             participantData.push({ name: event.supervisor.id.name, jobdesk: 'Supervisor' });
         }
 
         // Gudang
         for (const g of event.gudang) {
-            if (g.user_id) {
+            if (g.user_id && g.confirmation === "bisa") {
                 const jobdeskNames = g.jobdesk.map(j => j.name).join(', ');
                 participantData.push({ name: g.user_id.name, jobdesk: jobdeskNames || '-' });
             }
@@ -890,7 +890,7 @@ exports.getEventInfoForEmployee = async (req, res) => {
         // Dapur
         for (const d of event.dapur) {
             for (const pj of d.penanggung_jawab) {
-                if (pj.user_id) {
+                if (pj.user_id && pj.confirmation === "bisa") {
                     participantData.push({ name: pj.user_id.name, jobdesk: `PJ Menu: ${d.menu} ` });
                 }
             }

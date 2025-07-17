@@ -9,14 +9,18 @@ export const registerSubscription = async (userId) => {
             console.log("Permission:", permission);
             if (permission !== "granted") return;
 
+            let subscription = await reg.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+                });
+                console.log("Subscription baru berhasil dibuat:", subscription);
+            } else {
+                console.log("Sudah ada subscription:", subscription);
+            }
 
-            const subscription = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
-            });
-
-            console.log("Subscription berhasil dibuat:", subscription);
-
+            // Selalu kirim subscription ke backend (update/insert)
             await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/push-subscription`, {
                 userId,
                 subscription
