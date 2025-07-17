@@ -214,7 +214,6 @@ export default function InfoEventPageEmployees() {
     const { event, role, participants } = eventInfo;
 
     const mergedParticipants = participants
-        .filter(p => p.confirmation === "bisa")
         .reduce((acc, curr) => {
             const existing = acc.find(p => p.name === curr.name);
             if (existing) {

@@ -16,6 +16,7 @@ export default function PushManager({ children }) {
             }
 
             console.log("PushManager: userId =", session.id, "→ memanggil registerSubscription()");
+            console.log("SESSION YANG DIAMBIL:", session);
             await registerSubscription(session.id);
         };
 

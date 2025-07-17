@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
+  console.log("VAPID PUBLIC KEY:", process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
   return (
     <>
       <div className="flex items-center justify-center min-h-screen w-full p-5 bg-gradient-to-b from-gray-100 to-gray-300">
