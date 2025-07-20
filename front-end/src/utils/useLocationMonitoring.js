@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import * as turf from '@turf/turf';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 export default function useLocationMonitoring({ eventInfo, userId, setStatus }) {
     const watchIdRef = useRef(null);
@@ -30,7 +31,12 @@ export default function useLocationMonitoring({ eventInfo, userId, setStatus }) 
 
 
         if (!eventInfo.location?.polygon?.length) {
-            console.log("Polygon tidak tersedia atau kosong.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Polygon tidak tersedia atau kosong.',
+                confirmButtonText: 'OK'
+            });
             return;
         }
 
@@ -39,7 +45,12 @@ export default function useLocationMonitoring({ eventInfo, userId, setStatus }) 
         ]);
 
         if (!navigator.geolocation) {
-            console.log("Geolocation tidak didukung oleh browser.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Geolocation tidak didukung oleh browser.',
+                confirmButtonText: 'OK'
+            });
             return;
         }
 
@@ -68,12 +79,21 @@ export default function useLocationMonitoring({ eventInfo, userId, setStatus }) 
                             note: "Keluar dari area kerja"
                         });
                     } catch (err) {
-                        console.log("Gagal kirim monitoring:", err);
+                        console.error("Error sending out-of-bounds data:", err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal mengirim data keluar area kerja.',
+                        });
                     }
                 }
             },
             (err) => {
-                console.log("Geolocation error:", err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Akses Lokasi Ditolak',
+                    text: 'Mohon izinkan akses lokasi agar sistem dapat memantau keberadaan Anda.',
+                });
             },
             {
                 enableHighAccuracy: true,

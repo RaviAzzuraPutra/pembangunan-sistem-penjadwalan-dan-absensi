@@ -107,7 +107,7 @@ export default function AttendanceDetailData() {
         fetchAbsensi();
     }, [id]);
 
-    const showLocationMap = (location, timestamp, fase) => {
+    const showLocationMap = (location, timestamp, fase, name) => {
         if (!location) {
             Swal.fire({
                 icon: "error",
@@ -127,9 +127,7 @@ export default function AttendanceDetailData() {
             : '-';
 
         Swal.fire({
-            title: `Absensi - ${fase === 'prepare' ? 'Prepare' : 'Service'}` +
-                ` untuk ${absensi.find(row => row.location === location)?.name || 'Tidak Diketahui'} -` +
-                ` Waktu: ${waktuFormatted}`,
+            title: `Absensi - ${fase === 'prepare' ? 'Prepare' : 'Service'} untuk ${name} - Waktu: ${waktuFormatted}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -161,7 +159,7 @@ export default function AttendanceDetailData() {
                 row.prepare === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, row.prepareTime, 'prepare')}
+                        onClick={() => showLocationMap(row.location, row.prepareTime, 'prepare', row.name)}
                     >
                         ✅
                     </span>
@@ -174,7 +172,7 @@ export default function AttendanceDetailData() {
                 row.service === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row.location, row.serviceTime, 'service')}
+                        onClick={() => showLocationMap(row.location, row.serviceTime, 'service', row.name)}
                     >
                         ✅
                     </span>

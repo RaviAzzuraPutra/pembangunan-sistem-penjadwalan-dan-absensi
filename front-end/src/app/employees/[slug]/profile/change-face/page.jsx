@@ -50,7 +50,6 @@ export default function ChangeFace() {
 
         if (!context) return
 
-        // Flip context agar hasil capture tidak mirror
         context.save();
         context.translate(canvas.width, 0);
         context.scale(-1, 1);

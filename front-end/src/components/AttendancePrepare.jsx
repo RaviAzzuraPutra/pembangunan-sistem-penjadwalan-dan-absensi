@@ -92,7 +92,6 @@ export default function AttendancePrepare() {
         let challengePassed = false;
         const descriptors = [];
 
-        // Random challenge direction
         const directions = ['left', 'right'];
         const randomDir = directions[Math.floor(Math.random() * directions.length)];
         const challengeMessage = randomDir === 'left'
@@ -188,7 +187,7 @@ export default function AttendancePrepare() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 800); // setiap 200ms
+            }, 800);
         }
 
         return () => clearInterval(interval);

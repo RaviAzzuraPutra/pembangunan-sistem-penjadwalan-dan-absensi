@@ -6,31 +6,26 @@ export default async function registerSubscription(userId) {
             const reg = await navigator.serviceWorker.ready;
 
             const permission = await Notification.requestPermission();
-
-            console.log("Permission:", permission);
-
-            if (permission !== "granted") return;
-
-            console.log("Push Subscription dibatalkan karena permission:", permission);
+            if (permission !== "granted") {
+                console.log("Izin notifikasi ditolak:", permission);
+                return;
+            }
 
             let subscription = await reg.pushManager.getSubscription();
 
-            console.log("Hasil getSubscription:", subscription);
-
             if (!subscription) {
-                subscription = await reg.pushManager.subscribe({
+                const rawSub = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
                 });
-
-                console.log("Subscription baru berhasil dibuat:", subscription);
-
+                subscription = rawSub.toJSON(); // ⬅️ INI PENTING
+                console.log("Subscription baru dibuat:", subscription);
             } else {
-                console.log("Sudah ada subscription:", subscription);
+                subscription = subscription.toJSON(); // pastikan plain object
+                console.log("Subscription sudah ada:", subscription);
             }
 
-            console.log("Mengirim subscription ke backend…");
-
+            // Kirim ke backend
             await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/push-subscription`, {
                 userId,
                 subscription
@@ -38,10 +33,10 @@ export default async function registerSubscription(userId) {
                 withCredentials: true
             });
 
-            console.log("Sending subscription:", { userId, subscription });
+            console.log("Subscription berhasil dikirim ke backend");
 
         } catch (error) {
-            console.log("Error during push subscription:", error);
+            console.error("Gagal melakukan subscription:", error);
             if (error.response) {
                 console.error("→ response data:", error.response.data);
                 console.error("→ status:", error.response.status);

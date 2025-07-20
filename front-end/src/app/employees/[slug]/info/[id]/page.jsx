@@ -53,13 +53,6 @@ export default function InfoEventPageEmployees() {
     useEffect(() => {
         if (!eventInfo) return;
 
-        const polygonCoords = eventInfo.event.location.polygon.map(coord => [coord[1], coord[0]]);
-
-        if (!polygonCoords || !Array.isArray(polygonCoords) || polygonCoords.length === 0) {
-            setInsideArea(false);
-            return;
-        }
-
         const geoOptions = {
             enableHighAccuracy: true,
             timeout: 20000,
@@ -74,6 +67,13 @@ export default function InfoEventPageEmployees() {
                         position.coords.longitude,
                         position.coords.latitude
                     ]);
+
+                    const polygonCoords = eventInfo.event.location.polygon.map(coord => [coord[1], coord[0]]);
+
+                    if (!polygonCoords || !Array.isArray(polygonCoords) || polygonCoords.length === 0) {
+                        setInsideArea(false);
+                        return;
+                    }
 
                     const eventPolygon = turf.polygon([polygonCoords]);
                     const isInside = turf.booleanPointInPolygon(userLocation, eventPolygon);

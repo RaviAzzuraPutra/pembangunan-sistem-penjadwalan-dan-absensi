@@ -46,7 +46,7 @@ exports.createAttendance = async (req, res) => {
         const storedDescriptor = JSON.parse(user.face_data);
         const Face_Matching = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
         const threshold = 0.6;
-        const face_match = Face_Matching < threshold;
+        const face_match = Face_Matching <= threshold;
         if (!face_match) {
             return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
         }
@@ -158,39 +158,48 @@ exports.getAttendancesByEvent = async (req, res) => {
     }
 };
 
-exports.saveSubcription = async (req, res) => {
+exports.saveSubscription = async (req, res) => {
     try {
-        console.log("MENERIMA REQUEST SUBSCRIPTION:", req.body);
         const { userId, subscription } = req.body;
 
-        const endpoint = subscription.endpoint;
+        console.log("SUBSCRIPTION YANG DITERIMA:", JSON.stringify(subscription, null, 2));
+
+        if (!userId || !subscription || !subscription.endpoint) {
+            return res.status(400).json({
+                success: false,
+                message: "Data subscription tidak lengkap.",
+            });
+        }
 
         const existing = await Subscription.findOne({ user_id: userId, endpoint: subscription.endpoint });
+
         if (existing) {
             existing.subscription = subscription;
             existing.endpoint = subscription.endpoint;
             await existing.save();
+            console.log("Subscription diperbarui.");
         } else {
             await Subscription.create({
                 user_id: userId,
                 subscription,
-                endpoint
+                endpoint: subscription.endpoint
             });
+            console.log("Subscription baru disimpan.");
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            message: "Subscription berhasil disimpan."
-        })
+            message: "Subscription berhasil disimpan.",
+        });
     } catch (error) {
-        console.error("Error saving subscription:", error);
-        res.status(500).json({
+        console.error("Gagal menyimpan subscription:", error);
+        return res.status(500).json({
             success: false,
             message: "Gagal menyimpan subscription.",
             error: error.message
         });
     }
-}
+};
 
 // Helper
 function combineDateTime(date, time) {

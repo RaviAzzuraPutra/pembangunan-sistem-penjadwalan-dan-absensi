@@ -142,15 +142,18 @@ export default function AddEvent() {
                 mapRef.current?.setView(latlng, 20)
             }
         } catch (error) {
-            console.log("TERJADI ERROR DALAM PENCARIAN", error)
+            Swal.fire({
+                icon: 'error',
+                title: 'Pencarian Lokasi Gagal',
+                text: 'Tidak dapat menemukan lokasi yang Anda cari. Silakan coba lagi dengan kata kunci yang berbeda.',
+            });
         }
     }
 
     const handleReverseGeocode = async (lat, lon) => {
         try {
-            const response = await axios.get("https://nominatim.openstreetmap.org/reverse", {
-                params: { lat, lon, format: 'json' }
-            });
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+            const response = await axios.get(url);
             if (response.data && response.data.address) {
                 const namaJalan = response.data.address.road || response.data.display_name;
                 setSearchQuery(namaJalan);
@@ -160,7 +163,12 @@ export default function AddEvent() {
                 mapRef.current?.setView([lat, lon], currentZoom);
             }
         } catch (error) {
-            console.log("TERJADI ERROR DALAM REVERSE GEOCODING", error)
+            Swal.fire({
+                icon: 'error',
+                title: 'Geocoding Gagal',
+                text: 'Tidak dapat mendapatkan alamat dari koordinat yang diberikan. Silakan coba lagi.',
+            });
+            console.error("Geocoding error:", error);
         }
     }
 
