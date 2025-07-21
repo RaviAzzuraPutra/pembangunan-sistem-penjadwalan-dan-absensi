@@ -24,7 +24,9 @@ export default function PushManager({ children }) {
             console.log("✅ Mulai proses subscription untuk user:", session.id);
 
             // Tunggu service worker siap
+            console.log("⏳ Menunggu service worker siap...");
             const reg = await navigator.serviceWorker.ready;
+            console.log("✅ Service worker siap:", reg);
 
             // Minta izin notifikasi
             const permission = await Notification.requestPermission();
