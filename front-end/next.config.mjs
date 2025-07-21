@@ -8,5 +8,5 @@ export default withPWA({
     dest: "public",
     register: true,
     skipWaiting: true,
-    swSrc: 'sw.js',
+    swSrc: 'src/sw.js',
 })(nextConfig);
