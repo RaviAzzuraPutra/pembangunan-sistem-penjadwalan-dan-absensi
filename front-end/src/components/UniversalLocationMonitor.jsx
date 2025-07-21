@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import useLocationMonitoring from "../utils/useLocationMonitoring";
+import useLocationMonitoring from "../app/client/useLocationMonitoring";
 import { getUserSession } from "../utils/getSession";
 import axios from "axios";
 

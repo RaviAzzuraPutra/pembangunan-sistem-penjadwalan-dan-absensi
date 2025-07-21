@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import registerSubscription from "../utils/registerSubscription";
+import registerSubscription from "../app/client/registerSubscription";
 import { getUserSession } from "../utils/getSession";
 
 export default function PushManager({ children }) {
