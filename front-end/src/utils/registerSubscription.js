@@ -1,7 +1,7 @@
 "use client";
 
 import axios from "axios";
-import getSession from "../../utils/getSession";
+import getSession from "./getSession";
 
 export default async function registerSubscription(userId) {
     const session = await getSession();
