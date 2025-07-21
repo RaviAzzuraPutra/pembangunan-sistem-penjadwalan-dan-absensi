@@ -1,9 +1,8 @@
-const withPWA = require('next-pwa')({
-    dest: 'public'
-})
+// next.config.mjs
+import withPWA from 'next-pwa';
 
 const nextConfig = {
-    /* config options here */
+    dest: 'public',
 };
 
 export default withPWA(nextConfig);
