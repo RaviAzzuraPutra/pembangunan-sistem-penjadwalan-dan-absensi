@@ -1,7 +1,3 @@
-import { precacheAndRoute } from 'workbox-precaching'
-
-precacheAndRoute(self.__WB_MANIFEST)
-
 /*
  * ATTENTION: An "eval-source-map" devtool has been used.
  * This devtool is neither made for production nor for readable output files.

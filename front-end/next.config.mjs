@@ -9,5 +9,4 @@ export default withPWA({
     register: true,
     disable: process.env.NODE_ENV === "development",
     skipWaiting: true,
-    swSrc: 'src/sw.js',
 })(nextConfig);
