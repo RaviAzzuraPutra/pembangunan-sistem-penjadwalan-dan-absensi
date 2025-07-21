@@ -1,6 +1,10 @@
 import axios from "axios";
+import { getSession } from "./getSession";
 
 export default async function registerSubscription(userId) {
+    const session = await getSession();
+    console.log("SESSION YANG DIAMBIL:", session);
+    console.log(">> [registerSubscription] Dijalankan untuk userId:", userId);
     if ("serviceWorker" in navigator && "PushManager" in window) {
         try {
             const reg = await navigator.serviceWorker.ready;

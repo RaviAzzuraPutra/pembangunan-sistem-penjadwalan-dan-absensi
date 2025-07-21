@@ -11,7 +11,7 @@ export const getUserSession = async () => {
         } else {
             return null;
         }
-        console.log("SESSION YANG DIAMBIL:", response.data.user);
+
     } catch (error) {
         return null
     }

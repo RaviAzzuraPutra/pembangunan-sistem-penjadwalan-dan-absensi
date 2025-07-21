@@ -62,7 +62,11 @@ export default function AttendanceDetailData() {
                         absensiMap[userId].serviceTime = item.timestamp;
                     }
 
-                    if (!absensiMap[userId].location && item.location) {
+                    if (
+                        item.location &&
+                        typeof item.location.latitude === "number" &&
+                        typeof item.location.longitude === "number"
+                    ) {
                         absensiMap[userId].location = item.location;
                     }
                 });

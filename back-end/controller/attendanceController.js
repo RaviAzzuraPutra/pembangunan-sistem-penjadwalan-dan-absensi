@@ -162,7 +162,9 @@ exports.saveSubscription = async (req, res) => {
     try {
         const { userId, subscription } = req.body;
 
-        console.log("SUBSCRIPTION YANG DITERIMA:", JSON.stringify(subscription, null, 2));
+        console.log("==== [RECEIVED PUSH SUBSCRIPTION] ====");
+        console.log("Headers:", JSON.stringify(req.headers, null, 2));
+        console.log("Body:", JSON.stringify(req.body, null, 2));
 
         if (!userId || !subscription || !subscription.endpoint) {
             return res.status(400).json({
