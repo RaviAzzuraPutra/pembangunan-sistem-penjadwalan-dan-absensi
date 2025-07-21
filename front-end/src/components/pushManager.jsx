@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { registerSubscription } from "../utils/registerSubscription";
+import registerSubscription from "../utils/registerSubscription";
 import { getUserSession } from "../utils/getSession";
 
 export default function PushManager({ children }) {
@@ -15,6 +15,9 @@ export default function PushManager({ children }) {
 
             console.log("Memulai push subscription untuk user:", session.id);
             await registerSubscription(session.id);
+            console.log("menjalankan registerSubscription untuk userId:", session.id);
+            console.log("Push subscription selesai untuk user:", session.id);
+            console.log("Service worker dan push subscription berhasil didaftarkan.");
         };
 
         if ("serviceWorker" in navigator) {
