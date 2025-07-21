@@ -12,6 +12,7 @@ export default function PushManager({ children }) {
                 console.log("User belum login atau session tidak valid.");
                 return;
             }
+            console.log("typeof registerSubscription", typeof registerSubscription);
 
             console.log("Memulai push subscription untuk user:", session.id);
             await registerSubscription(session.id);

@@ -1,10 +1,11 @@
 "use client";
 
 import axios from "axios";
-import getSession from "./getSession";
+import { getUserSession } from "./getSession";
 
 export default async function registerSubscription(userId) {
-    const session = await getSession();
+    console.log("✅ registerSubscription.js dimuat");
+    const session = await getUserSession();
     console.log("SESSION YANG DIAMBIL:", session);
     console.log(">> [registerSubscription] Dijalankan untuk userId:", userId);
     console.log(">> [registerSubscription] Session:", session);
