@@ -18,7 +18,6 @@ export default function RootLayout({ children }) {
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body>
-        <ServiceWorkerRegistration />
         {children}
       </body>
     </html>
