@@ -27,11 +27,11 @@ function combineDateTime(date, timeStr) {
 exports.createAttendance = async (req, res) => {
     try {
         const { slug, eventId, tahap } = req.params;
-        const { latitude, longitude } = req.body;
-
         // Validasi lokasi
-        if (!latitude || !longitude) {
-            return res.status(400).json({ message: "Data lokasi tidak lengkap", success: false });
+        const { latitude, longitude, face_match } = req.body;
+
+        if (face_match !== "true") {
+            return res.status(400).json({ success: false, message: "Verifikasi wajah gagal. Tidak bisa absen." });
         }
 
         // Validasi user

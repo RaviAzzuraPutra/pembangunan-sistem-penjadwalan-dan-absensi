@@ -167,7 +167,7 @@ export default function AttendancePrepare() {
 
             // Langkah 3: Kirim absensi
             const finalFormData = new FormData();
-            finalFormData.append("face", blob, "selfie.jpg");
+            finalFormData.append("face_match", "true");
             finalFormData.append("latitude", String(location.latitude));
             finalFormData.append("longitude", String(location.longitude));
 
