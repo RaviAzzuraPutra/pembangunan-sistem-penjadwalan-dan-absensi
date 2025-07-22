@@ -21,15 +21,6 @@ export default function PushManager({ children }) {
                     console.log("❌ User belum login atau session tidak valid.");
                     return;
                 }
-
-                console.log("✅ Mulai proses subscription untuk user:", session.id);
-                console.log("🔍 Memeriksa dukungan ServiceWorker dan PushManager...");
-                // Tambahkan manual register jika belum ada controller (opsional)
-                if (!navigator.serviceWorker.controller) {
-                    console.log("🛠️ Belum ada controller, mencoba manual register service worker...");
-                    await navigator.serviceWorker.register("/sw.js");
-                    await new Promise((resolve) => setTimeout(resolve, 1000)); // tunggu 1 detik agar terdaftar
-                }
                 const reg = await navigator.serviceWorker.ready;
                 console.log("📦 SERVICE WORKER FILE:", reg.active?.scriptURL);
                 console.log("✅ Service worker siap (via next-pwa):", reg);

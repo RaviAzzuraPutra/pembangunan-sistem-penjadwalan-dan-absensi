@@ -4,11 +4,9 @@ const nextConfig = {
     reactStrictMode: true,
 };
 
-export default isProd
-    ? withPWA({
-        dest: "public",
-        skipWaiting: true,
-        clientsClaim: true,
-        swSrc: "src/sw-custom.js",
-    })(nextConfig)
-    : nextConfig;
+export default withPWA({
+    dest: "public",
+    skipWaiting: true,
+    clientsClaim: true,
+    swSrc: "src/sw-custom.js",
+})(nextConfig);

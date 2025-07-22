@@ -1,4 +1,5 @@
 import "./globals.css";
+import ServiceWorkersRegister from "../components/ServiceWorkersRegister"
 
 
 export const metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body>
+        <ServiceWorkersRegister />
         {children}
       </body>
     </html>
