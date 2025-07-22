@@ -9,7 +9,6 @@ const nextConfig = {
 export default isProd
     ? withPWA({
         dest: "public",
-        register: true,
         skipWaiting: true,
         disable: !isProd,
         clientsClaim: true,
