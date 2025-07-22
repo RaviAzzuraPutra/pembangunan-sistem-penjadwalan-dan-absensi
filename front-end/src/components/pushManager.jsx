@@ -14,6 +14,19 @@ function urlBase64ToUint8Array(base64String) {
 
 export default function PushManager({ children }) {
     useEffect(() => {
+        const registerServiceWorker = async () => {
+            if ("serviceWorker" in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+                    console.log("✅ Service Worker berhasil didaftarkan secara manual:", registration);
+                    return registration;
+                } catch (error) {
+                    console.error("❌ Gagal mendaftarkan Service Worker secara manual:", error);
+                    return null;
+                }
+            }
+            return null;
+        };
         const handlePushSubscription = async () => {
             try {
                 const session = await getUserSession();
