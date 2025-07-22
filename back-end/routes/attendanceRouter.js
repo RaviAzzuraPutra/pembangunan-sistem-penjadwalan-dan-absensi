@@ -13,4 +13,5 @@ router.post("/out-of-bounds", attendanceController.monitoringLocation);
 router.get("/active/:user_id", attendanceController.getActiveEventByUser);
 router.post("/periodic-face-verification", upload.single("face"), attendanceController.periodicFaceVerification);
 router.post("/periodic-face-fail", attendanceController.periodicFaceFail);
+router.post("/attendance/validate-face/:slug", upload.single("face"), attendanceController.validateFaceOnly);
 module.exports = router;

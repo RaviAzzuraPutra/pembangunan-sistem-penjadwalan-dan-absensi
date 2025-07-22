@@ -26,31 +26,19 @@ function combineDateTime(date, timeStr) {
 
 exports.createAttendance = async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: "Tidak ada file yang diupload" });
-        }
-
         const { slug, eventId, tahap } = req.params;
         const { latitude, longitude } = req.body;
 
+        // Validasi lokasi
+        if (!latitude || !longitude) {
+            return res.status(400).json({ message: "Data lokasi tidak lengkap", success: false });
+        }
+
+        // Validasi user
         const user = await User.findOne({ slug });
-        if (!user || !user.face_data) {
-            return res.status(404).json({ message: "User tidak ditemukan atau belum memiliki data wajah" });
+        if (!user) {
+            return res.status(404).json({ message: "User tidak ditemukan", success: false });
         }
-
-        const newDescriptor = await detectFace(req.file.buffer);
-        if (!newDescriptor) {
-            return res.status(400).json({ message: "Wajah tidak terdeteksi!", success: false });
-        }
-
-        const storedDescriptor = JSON.parse(user.face_data);
-        const Face_Matching = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
-        const threshold = 0.6;
-        const face_match = Face_Matching <= threshold;
-        if (!face_match) {
-            return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
-        }
-        const status = face_match ? "berhasil" : "gagal";
 
         const attendance = new Attendance({
             event_id: eventId,
@@ -61,28 +49,26 @@ exports.createAttendance = async (req, res) => {
                 latitude: parseFloat(latitude),
                 longitude: parseFloat(longitude)
             },
-            face_match,
-            status
+            face_match: true, // diasumsikan validasi sudah sukses di frontend
+            status: "berhasil"
         });
 
         await attendance.save();
 
         res.status(200).json({
             message: "Absensi Berhasil!",
-            success: true,
-            status,
-            distance: Face_Matching,
-            face_match
-        })
+            success: true
+        });
     } catch (error) {
         console.error("Terjadi kesalahan saat membuat absensi:", error);
         res.status(500).json({
             success: false,
             message: "Terjadi kesalahan server",
             error: error.message || "Internal Server Error"
-        })
+        });
     }
-}
+};
+
 
 exports.getAttendancesByEvent = async (req, res) => {
     const { eventId } = req.params;
@@ -516,5 +502,37 @@ exports.periodicFaceFail = async (req, res) => {
             message: 'Terjadi kesalahan server',
             error: error.message || 'Internal Server Error'
         });
+    }
+};
+
+// Endpoint baru
+exports.validateFaceOnly = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Tidak ada file" });
+        }
+
+        const { slug } = req.params;
+        const user = await User.findOne({ slug });
+        if (!user || !user.face_data) {
+            return res.status(404).json({ success: false, message: "User tidak ditemukan atau belum punya data wajah" });
+        }
+
+        const newDescriptor = await detectFace(req.file.buffer);
+        if (!newDescriptor) {
+            return res.status(400).json({ success: false, message: "Wajah tidak terdeteksi" });
+        }
+
+        const storedDescriptor = JSON.parse(user.face_data);
+        const distance = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
+
+        if (distance > 0.6) {
+            return res.status(400).json({ success: false, message: "Wajah tidak cocok", distance });
+        }
+
+        res.status(200).json({ success: true, message: "Wajah cocok", distance });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };

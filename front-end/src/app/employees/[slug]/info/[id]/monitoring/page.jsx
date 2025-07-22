@@ -70,7 +70,11 @@ export default function Monitoring() {
                         absensiMap[userId].serviceLocation = item.location;
                     }
 
-                    if (!absensiMap[userId].location && item.location) {
+                    if (
+                        item.location &&
+                        typeof item.location.latitude === "number" &&
+                        typeof item.location.longitude === "number"
+                    ) {
                         absensiMap[userId].location = item.location;
                     }
                 });
@@ -138,14 +142,14 @@ export default function Monitoring() {
         }
     }
 
-    const showLocationMap = (userId, location, timestamp) => {
+    const showLocationMap = (location, timestamp, fase, name) => {
         if (!location) {
             Swal.fire({
                 icon: "error",
                 title: "Lokasi Tidak Tersedia",
                 text: "Lokasi untuk karyawan ini tidak tersedia.",
             });
-            return
+            return;
         }
 
         const div = document.createElement('div');
@@ -153,17 +157,12 @@ export default function Monitoring() {
         div.style.width = '100%';
         div.style.height = '400px';
 
-
         const waktuFormatted = timestamp
             ? new Date(timestamp).toLocaleString('id-ID')
             : '-';
 
-        // Cari nama berdasarkan userId
-        const user = absensi.find(row => row._id.toString() === userId.toString());
-        const userName = user ? user.name : 'Tidak Diketahui';
-
         Swal.fire({
-            title: `Absensi untuk ${userName} - Waktu: ${waktuFormatted}`,
+            title: `Absensi - ${fase === 'prepare' ? 'Prepare' : 'Service'} untuk ${name} - Waktu: ${waktuFormatted}`,
             html: div,
             width: 600,
             didOpen: () => {
@@ -196,13 +195,12 @@ export default function Monitoring() {
                 row.prepare === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row._id, row.prepareLocation, row.prepareTime)}
+                        onClick={() => showLocationMap(row.location, row.prepareTime, 'prepare', row.name)}
                     >
                         ✅
                     </span>
                 ) : row.prepare
             ),
-            wrap: true,
         },
         {
             name: 'Service',
@@ -210,13 +208,12 @@ export default function Monitoring() {
                 row.service === "✅" ? (
                     <span
                         className="cursor-pointer text-green-600 font-bold"
-                        onClick={() => showLocationMap(row._id, row.serviceLocation, row.serviceTime)}
+                        onClick={() => showLocationMap(row.location, row.serviceTime, 'service', row.name)}
                     >
                         ✅
                     </span>
                 ) : row.service
             ),
-            wrap: true,
         },
         {
             name: "Keterangan",
@@ -233,11 +230,6 @@ export default function Monitoring() {
                     >
                         Ingatkan!
                     </button>
-                    {/* <button
-                        className="bg-rose-600 text-white px-1 py-0.5  text-xs rounded hover:bg-rose-800"
-                    >
-                        Izinkan Keluar
-                    </button> */}
                 </div>
             ),
             width: '20%',
