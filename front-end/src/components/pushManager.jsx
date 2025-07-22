@@ -64,16 +64,7 @@ export default function PushManager({ children }) {
             }
         };
 
-        if ("serviceWorker" in navigator && "PushManager" in window) {
-            navigator.serviceWorker.register("/sw.js").then(() => {
-                console.log("✅ Service Worker berhasil didaftarkan");
-                doRegister();
-            }).catch((err) => {
-                console.error("❌ Gagal mendaftarkan service worker:", err);
-            });
-        } else {
-            console.warn("❌ Browser tidak support ServiceWorker atau PushManager");
-        }
+
     }, []);
 
     return <>{children}</>;
