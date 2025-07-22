@@ -524,13 +524,14 @@ exports.validateFaceOnly = async (req, res) => {
         }
 
         const storedDescriptor = JSON.parse(user.face_data);
-        const distance = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
-
-        if (distance >= 0.6) {
-            return res.status(400).json({ success: false, message: "Wajah tidak cocok!", distance });
+        const Face_Matching = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
+        const threshold = 0.6;
+        const face_match = Face_Matching <= threshold;
+        if (!face_match) {
+            return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
         }
 
-        res.status(200).json({ success: true, message: "Wajah cocok", distance });
+        res.status(200).json({ success: true, message: "Wajah cocok", distance: Face_Matching });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: "Server error", error: error.message });
