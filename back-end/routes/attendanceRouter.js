@@ -5,7 +5,7 @@ const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.post("/create/:slug/event/:eventId/tahap/:tahap", upload.single("face"), attendanceController.createAttendance);
+router.post("/create/:slug/event/:eventId/tahap/:tahap", attendanceController.createAttendance);
 router.post("/remind/:userId/event/:eventId", attendanceController.remindUserPush);
 router.post("/push-subscription", attendanceController.saveSubscription);
 router.get("/:eventId", attendanceController.getAttendancesByEvent);

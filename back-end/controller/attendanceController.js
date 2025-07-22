@@ -520,14 +520,14 @@ exports.validateFaceOnly = async (req, res) => {
 
         const newDescriptor = await detectFace(req.file.buffer);
         if (!newDescriptor) {
-            return res.status(400).json({ success: false, message: "Wajah tidak terdeteksi" });
+            return res.status(400).json({ success: false, message: "Wajah tidak terdeteksi!" });
         }
 
         const storedDescriptor = JSON.parse(user.face_data);
         const distance = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
 
-        if (distance > 0.6) {
-            return res.status(400).json({ success: false, message: "Wajah tidak cocok", distance });
+        if (distance <= 0.6) {
+            return res.status(400).json({ success: false, message: "Wajah tidak cocok!", distance });
         }
 
         res.status(200).json({ success: true, message: "Wajah cocok", distance });

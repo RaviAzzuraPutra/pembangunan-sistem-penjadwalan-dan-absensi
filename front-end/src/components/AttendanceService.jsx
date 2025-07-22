@@ -117,8 +117,8 @@ export default function AttendanceService() {
                 } catch (err) {
                     Swal.fire({
                         icon: "error",
-                        title: "Wajah Tidak Cocok",
-                        text: "Silakan coba lagi. Pastikan wajah Anda sesuai dengan data sistem."
+                        title: "Gagal!!!",
+                        text: res.data.message
                     });
                     return false;
                 }
