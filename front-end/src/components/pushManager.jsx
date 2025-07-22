@@ -23,9 +23,11 @@ export default function PushManager({ children }) {
                 }
 
                 console.log("✅ Mulai proses subscription untuk user:", session.id);
-
+                console.log("🔍 Memeriksa dukungan ServiceWorker dan PushManager...")
+                console.log("📦 SERVICE WORKER FILE:", reg.active?.scriptURL);
                 // Tunggu service worker yang sudah auto-terdaftar dari next-pwa
                 const reg = await navigator.serviceWorker.ready;
+                console.log("📦 SERVICE WORKER FILE:", reg.active?.scriptURL);
                 console.log("✅ Service worker siap (via next-pwa):", reg);
 
                 // Minta izin notifikasi
