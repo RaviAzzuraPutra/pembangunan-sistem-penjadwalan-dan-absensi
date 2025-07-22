@@ -526,7 +526,7 @@ exports.validateFaceOnly = async (req, res) => {
         const storedDescriptor = JSON.parse(user.face_data);
         const distance = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
 
-        if (distance <= 0.6) {
+        if (distance >= 0.6) {
             return res.status(400).json({ success: false, message: "Wajah tidak cocok!", distance });
         }
 
