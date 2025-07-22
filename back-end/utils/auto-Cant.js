@@ -9,46 +9,65 @@ const AutoCantCron = () => {
     cron.schedule("0 0 * * *", async () => {
         try {
             const now = moment();
-            const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+            const threeDaysAgo = new Date(now.clone().subtract(3, "days"));
 
             const events = await Event.find({ status: "terjadwal" });
 
             for (const event of events) {
-                // Cek gudang
+                const eventCreatedAt = event._id.getTimestamp();
+
+                // Lewatkan event yang belum mencapai batas waktu 3 hari
+                if (eventCreatedAt >= threeDaysAgo) continue;
+
+                let changed = false;
+
+                // Karyawan Gudang
                 for (const g of event.gudang) {
-                    const createdAt = g._id.getTimestamp();
-                    if (g.confirmation === 'menunggu' && createdAt < twoDaysAgo) {
+                    if (g.confirmation === 'menunggu') {
                         g.confirmation = 'tidak bisa';
-                        await Unavailability.create({ user_id: g.user_id, date: event.date_prepare });
+                        await Unavailability.create({
+                            user_id: g.user_id,
+                            date: event.date_prepare
+                        });
+                        changed = true;
                     }
                 }
 
-                // Cek dapur
+                // Karyawan Dapur
                 for (const d of event.dapur) {
                     for (const pj of d.penanggung_jawab) {
-                        const createdAt = pj._id.getTimestamp();
-                        if (pj.confirmation === 'menunggu' && createdAt < twoDaysAgo) {
+                        if (pj.confirmation === 'menunggu') {
                             pj.confirmation = 'tidak bisa';
-                            await Unavailability.create({ user_id: pj.user_id, date: event.date_service });
+                            await Unavailability.create({
+                                user_id: pj.user_id,
+                                date: event.date_service
+                            });
+                            changed = true;
                         }
                     }
                 }
 
-                // Cek supervisor
+                // Supervisor
                 const supervisor = event.supervisor;
-                if (supervisor.confirmation === 'menunggu' && event._id.getTimestamp() < twoDaysAgo) {
+                if (supervisor && supervisor.confirmation === 'menunggu') {
                     supervisor.confirmation = 'tidak bisa';
-                    await Unavailability.create({ user_id: s.id, date: event.date_prepare });
+                    await Unavailability.create({
+                        user_id: supervisor.id,
+                        date: event.date_prepare
+                    });
+                    changed = true;
                 }
 
-                await event.save();
+                if (changed) {
+                    await event.save();
+                }
             }
 
             console.log('[CRON] Konfirmasi timeout -> berhasil diproses');
         } catch (error) {
             console.error('[CRON] Error dalam memproses konfirmasi timeout:', error);
         }
-    })
-}
+    });
+};
 
 module.exports = AutoCantCron;

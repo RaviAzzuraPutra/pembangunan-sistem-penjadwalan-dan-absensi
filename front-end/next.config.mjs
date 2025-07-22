@@ -4,8 +4,10 @@ export default withPWA({
     dest: "public",
     register: true,
     skipWaiting: true,
-    disable: process.env.NODE_ENV === "development",
-    mode: "production", // ⬅️ penting untuk forcing generation
+    disable: !isProd,
+    clientsClaim: true,
+    swSrc: "src/sw-custom.js",
+    buildExcludes: [],
 })({
     reactStrictMode: true,
 });
