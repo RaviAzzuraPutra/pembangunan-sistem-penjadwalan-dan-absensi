@@ -118,7 +118,7 @@ export default function AttendanceService() {
                     Swal.fire({
                         icon: "error",
                         title: "Gagal!!!",
-                        text: res.data.message
+                        text: "Wajah tidak cocok!"
                     });
                     return false;
                 }
