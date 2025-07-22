@@ -11,13 +11,12 @@ import { loadModels, detectFace, analyzeFace } from "../utils/faceDetection";
 export default function AttendancePrepare() {
     const videoRef = useRef(null)
     const [cameraActive, setCameraActive] = useState(false)
-    const { slug, id } = useParams();
+    const { slug, id } = useParams()
     const searchParams = useSearchParams();
     const router = useRouter();
     const canvasRef = useRef(null);
     const [showValidationText, setShowValidationText] = useState(false);
     const [challengeText, setChallengeText] = useState('');
-
 
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
@@ -54,7 +53,11 @@ export default function AttendancePrepare() {
                     }
                 )
             } else {
-                console.log("Geolocation tidak didukung oleh browser ini.")
+                Swal.fire({
+                    icon: "error",
+                    title: "Geolocation Tidak Didukung",
+                    text: "Browser Anda tidak mendukung geolocation. Silakan gunakan browser yang mendukung fitur ini."
+                });
             }
         }
     }, [])
@@ -69,7 +72,11 @@ export default function AttendancePrepare() {
                     setCameraActive(true)
                 }
             } catch (error) {
-                console.log("ERROR SAAT MENGAKSES KAMERA", error)
+                Swal.fire({
+                    icon: "error",
+                    title: "Gagal Mengakses Kamera",
+                    text: "Pastikan kamera Anda terhubung dan izinkan akses kamera pada browser ini"
+                });
             }
         }
 
@@ -85,6 +92,57 @@ export default function AttendancePrepare() {
     const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
 
+        // Langkah 1: Tampilkan challenge dulu
+        setShowValidationText(true);
+        setChallengeText('');
+
+        let challengePassed = false;
+        const descriptors = [];
+
+        // Random challenge direction
+        const directions = ['left', 'right'];
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const challengeMessage = randomDir === 'left'
+            ? 'Gerakkan kepala ke KIRI'
+            : 'Gerakkan kepala ke KANAN';
+
+        setChallengeText(challengeMessage);
+
+        await new Promise(r => setTimeout(r, 500));
+
+        const videoWidth = videoRef.current.videoWidth;
+
+        const validateLoop = async () => {
+            for (let i = 0; i < 10; i++) {
+                const result = await analyzeFace(videoRef.current);
+                if (!result) continue;
+
+                descriptors.push(result.descriptor);
+
+                const nose = result.nose;
+                const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
+
+                if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
+                if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
+
+                await new Promise(r => setTimeout(r, 401));
+            }
+        };
+
+        await validateLoop();
+
+        setShowValidationText(false);
+
+        if (!challengePassed) {
+            Swal.fire({
+                icon: "error",
+                title: "Validasi Gagal!!!",
+                text: "Gerakan tidak sesuai tantangan."
+            });
+            return;
+        }
+
+        // Langkah 2: Ambil gambar dan kirim data ke backend
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
@@ -93,88 +151,18 @@ export default function AttendancePrepare() {
 
         CTX.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
-        canvas.toBlob(async (blob) => {
+        canvas.toBlob(async blob => {
             if (!blob) return;
 
-            const validateFaceOnly = async () => {
-                const formData = new FormData();
-                formData.append("face", blob, "selfie.jpg");
-
-                try {
-                    const res = await axios.post(
-                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/validate-face/${slug}`,
-                        formData,
-                        { headers: { "Content-Type": "multipart/form-data" } }
-                    );
-                    return res.data.success;
-                } catch (err) {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Gagal!!!",
-                        text: "Wajah tidak cocok!"
-                    });
-                    return false;
-                }
-            };
-
-            const isFaceValid = await validateFaceOnly();
-            if (!isFaceValid) return;
-
-            // Langkah 2: Tantangan/challenge
-            setShowValidationText(true);
-            setChallengeText('');
-
-            const directions = ['left', 'right'];
-            const randomDir = directions[Math.floor(Math.random() * directions.length)];
-            const challengeMessage = randomDir === 'left'
-                ? 'Gerakkan kepala ke KIRI'
-                : 'Gerakkan kepala ke KANAN';
-
-            setChallengeText(challengeMessage);
-
-            await new Promise(r => setTimeout(r, 500));
-
-            const videoWidth = videoRef.current.videoWidth;
-            let challengePassed = false;
-
-            const validateLoop = async () => {
-                for (let i = 0; i < 10; i++) {
-                    const result = await analyzeFace(videoRef.current);
-                    if (!result) continue;
-
-                    const nose = result.nose;
-                    const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
-
-                    if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
-                    if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
-
-                    await new Promise(r => setTimeout(r, 401));
-                }
-            };
-
-            await validateLoop();
-
-            setShowValidationText(false);
-
-            if (!challengePassed) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Validasi Gagal!!!",
-                    text: "Gerakan tidak sesuai tantangan."
-                });
-                return;
-            }
-
-            // Langkah 3: Kirim absensi
-            const finalFormData = new FormData();
-            finalFormData.append("face_match", "true");
-            finalFormData.append("latitude", String(location.latitude));
-            finalFormData.append("longitude", String(location.longitude));
+            const formData = new FormData();
+            formData.append("face", blob, "selfie.jpg");
+            formData.append("latitude", String(location.latitude));
+            formData.append("longitude", String(location.longitude));
 
             try {
                 const response = await axios.post(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
-                    finalFormData,
+                    formData,
                     { headers: { "Content-Type": "multipart/form-data" } }
                 );
 
@@ -188,7 +176,7 @@ export default function AttendancePrepare() {
                 });
             } catch (err) {
                 let errorMsg = "Terjadi kesalahan saat mengirim data. Silakan coba lagi.";
-                if (err.response?.data?.message) {
+                if (err.response && err.response.data && err.response.data.message) {
                     errorMsg = err.response.data.message;
                 }
                 Swal.fire({
@@ -199,8 +187,7 @@ export default function AttendancePrepare() {
                 });
             }
         }, "image/png");
-    };
-
+    }
 
 
     useEffect(() => {
@@ -208,7 +195,7 @@ export default function AttendancePrepare() {
         if (videoRef.current && canvasRef.current) {
             interval = setInterval(() => {
                 detectFace(videoRef.current, canvasRef.current);
-            }, 800);
+            }, 800); // setiap 200ms
         }
 
         return () => clearInterval(interval);
@@ -231,7 +218,7 @@ export default function AttendancePrepare() {
             </div>
 
             <div className="flex flex-col items-center justify-center space-y-7">
-                <h1 className="text-2xl font-bold text-center">Absensi Prepare</h1>
+                <h1 className="text-2xl font-bold text-center">Absensi Service</h1>
 
                 <div className="relative w-full max-w-md overflow-hidden shadow-lg border-2 border-black">
                     <video
@@ -246,6 +233,7 @@ export default function AttendancePrepare() {
                     {showValidationText && (
                         <p className="text-center font-semibold text-black">{challengeText}</p>
                     )}
+
 
                     <canvas ref={canvasRef} className="absolute top-0 w-full h-full" />
                 </div>
@@ -263,6 +251,6 @@ export default function AttendancePrepare() {
                     />
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

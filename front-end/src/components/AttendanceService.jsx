@@ -92,6 +92,57 @@ export default function AttendanceService() {
     const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
 
+        // Langkah 1: Tampilkan challenge dulu
+        setShowValidationText(true);
+        setChallengeText('');
+
+        let challengePassed = false;
+        const descriptors = [];
+
+        // Random challenge direction
+        const directions = ['left', 'right'];
+        const randomDir = directions[Math.floor(Math.random() * directions.length)];
+        const challengeMessage = randomDir === 'left'
+            ? 'Gerakkan kepala ke KIRI'
+            : 'Gerakkan kepala ke KANAN';
+
+        setChallengeText(challengeMessage);
+
+        await new Promise(r => setTimeout(r, 500));
+
+        const videoWidth = videoRef.current.videoWidth;
+
+        const validateLoop = async () => {
+            for (let i = 0; i < 10; i++) {
+                const result = await analyzeFace(videoRef.current);
+                if (!result) continue;
+
+                descriptors.push(result.descriptor);
+
+                const nose = result.nose;
+                const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
+
+                if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
+                if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
+
+                await new Promise(r => setTimeout(r, 401));
+            }
+        };
+
+        await validateLoop();
+
+        setShowValidationText(false);
+
+        if (!challengePassed) {
+            Swal.fire({
+                icon: "error",
+                title: "Validasi Gagal!!!",
+                text: "Gerakan tidak sesuai tantangan."
+            });
+            return;
+        }
+
+        // Langkah 2: Ambil gambar dan kirim data ke backend
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
@@ -100,88 +151,18 @@ export default function AttendanceService() {
 
         CTX.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
-        canvas.toBlob(async (blob) => {
+        canvas.toBlob(async blob => {
             if (!blob) return;
 
-            const validateFaceOnly = async () => {
-                const formData = new FormData();
-                formData.append("face", blob, "selfie.jpg");
-
-                try {
-                    const res = await axios.post(
-                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/validate-face/${slug}`,
-                        formData,
-                        { headers: { "Content-Type": "multipart/form-data" } }
-                    );
-                    return res.data.success;
-                } catch (err) {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Gagal!!!",
-                        text: "Wajah tidak cocok!"
-                    });
-                    return false;
-                }
-            };
-
-            const isFaceValid = await validateFaceOnly();
-            if (!isFaceValid) return;
-
-            // Langkah 2: Tantangan/challenge
-            setShowValidationText(true);
-            setChallengeText('');
-
-            const directions = ['left', 'right'];
-            const randomDir = directions[Math.floor(Math.random() * directions.length)];
-            const challengeMessage = randomDir === 'left'
-                ? 'Gerakkan kepala ke KIRI'
-                : 'Gerakkan kepala ke KANAN';
-
-            setChallengeText(challengeMessage);
-
-            await new Promise(r => setTimeout(r, 500));
-
-            const videoWidth = videoRef.current.videoWidth;
-            let challengePassed = false;
-
-            const validateLoop = async () => {
-                for (let i = 0; i < 10; i++) {
-                    const result = await analyzeFace(videoRef.current);
-                    if (!result) continue;
-
-                    const nose = result.nose;
-                    const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
-
-                    if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
-                    if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
-
-                    await new Promise(r => setTimeout(r, 401));
-                }
-            };
-
-            await validateLoop();
-
-            setShowValidationText(false);
-
-            if (!challengePassed) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Validasi Gagal!!!",
-                    text: "Gerakan tidak sesuai tantangan."
-                });
-                return;
-            }
-
-            // Langkah 3: Kirim absensi
-            const finalFormData = new FormData();
-            finalFormData.append("face", blob, "selfie.jpg");
-            finalFormData.append("latitude", String(location.latitude));
-            finalFormData.append("longitude", String(location.longitude));
+            const formData = new FormData();
+            formData.append("face", blob, "selfie.jpg");
+            formData.append("latitude", String(location.latitude));
+            formData.append("longitude", String(location.longitude));
 
             try {
                 const response = await axios.post(
                     `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
-                    finalFormData,
+                    formData,
                     { headers: { "Content-Type": "multipart/form-data" } }
                 );
 
@@ -195,7 +176,7 @@ export default function AttendanceService() {
                 });
             } catch (err) {
                 let errorMsg = "Terjadi kesalahan saat mengirim data. Silakan coba lagi.";
-                if (err.response?.data?.message) {
+                if (err.response && err.response.data && err.response.data.message) {
                     errorMsg = err.response.data.message;
                 }
                 Swal.fire({
@@ -206,8 +187,7 @@ export default function AttendanceService() {
                 });
             }
         }, "image/png");
-    };
-
+    }
 
 
     useEffect(() => {
@@ -271,6 +251,6 @@ export default function AttendanceService() {
                     />
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

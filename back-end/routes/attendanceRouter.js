@@ -5,7 +5,7 @@ const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.post("/create/:slug/event/:eventId/tahap/:tahap", attendanceController.createAttendance);
+router.post("/create/:slug/event/:eventId/tahap/:tahap", upload.single("face"), attendanceController.createAttendance);
 router.post("/remind/:userId/event/:eventId", attendanceController.remindUserPush);
 router.post("/push-subscription", attendanceController.saveSubscription);
 router.get("/:eventId", attendanceController.getAttendancesByEvent);
@@ -13,5 +13,4 @@ router.post("/out-of-bounds", attendanceController.monitoringLocation);
 router.get("/active/:user_id", attendanceController.getActiveEventByUser);
 router.post("/periodic-face-verification", upload.single("face"), attendanceController.periodicFaceVerification);
 router.post("/periodic-face-fail", attendanceController.periodicFaceFail);
-router.post("/attendance/validate-face/:slug", upload.single("face"), attendanceController.validateFaceOnly);
 module.exports = router;
