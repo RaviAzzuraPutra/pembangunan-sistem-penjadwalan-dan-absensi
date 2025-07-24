@@ -164,7 +164,7 @@ export default function Monitoring() {
         Swal.fire({
             title: `Absensi - ${fase === 'prepare' ? 'Prepare' : 'Service'} untuk ${name} - Waktu: ${waktuFormatted}`,
             html: div,
-            width: 600,
+            width: '90%',
             didOpen: () => {
                 const map = L.map(div).setView([location.latitude, location.longitude], 16);
 

@@ -141,6 +141,13 @@ export default function AddEvent() {
                 setLocationAddress(location.address)
                 mapRef.current?.setView(latlng, 20)
             }
+            else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lokasi Tidak Ditemukan',
+                    text: 'Tidak ada lokasi yang cocok dengan pencarian Anda. Silakan coba lagi dengan kata kunci yang berbeda.',
+                });
+            }
         } catch (error) {
             Swal.fire({
                 icon: 'error',

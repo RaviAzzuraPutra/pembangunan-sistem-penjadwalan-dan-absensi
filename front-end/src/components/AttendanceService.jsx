@@ -92,72 +92,70 @@ export default function AttendanceService() {
     const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
 
-        // Langkah 1: Tampilkan challenge dulu
+        // 1. Tampilkan challenge terlebih dahulu
         setShowValidationText(true);
         setChallengeText('');
 
-        let challengePassed = false;
-        const descriptors = [];
-
-        // Random challenge direction
+        // 2. Generate random challenge
         const directions = ['left', 'right'];
         const randomDir = directions[Math.floor(Math.random() * directions.length)];
         const challengeMessage = randomDir === 'left'
             ? 'Gerakkan kepala ke KIRI'
             : 'Gerakkan kepala ke KANAN';
-
         setChallengeText(challengeMessage);
 
         await new Promise(r => setTimeout(r, 500));
 
+        // 3. Proses validasi challenge
+        let challengeSuccess = false;
         const videoWidth = videoRef.current.videoWidth;
 
-        const validateLoop = async () => {
-            for (let i = 0; i < 10; i++) {
-                const result = await analyzeFace(videoRef.current);
-                if (!result) continue;
+        for (let i = 0; i < 10; i++) {
+            const result = await analyzeFace(videoRef.current);
+            if (!result) continue;
 
-                descriptors.push(result.descriptor);
+            const nose = result.nose;
+            const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
 
-                const nose = result.nose;
-                const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
-
-                if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
-                if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
-
-                await new Promise(r => setTimeout(r, 401));
+            if (randomDir === 'left' && noseX > videoWidth / 2 + 30) {
+                challengeSuccess = true;
+                break;
             }
-        };
+            if (randomDir === 'right' && noseX < videoWidth / 2 - 30) {
+                challengeSuccess = true;
+                break;
+            }
 
-        await validateLoop();
+            await new Promise(r => setTimeout(r, 400));
+        }
 
         setShowValidationText(false);
 
-        if (!challengePassed) {
+        // 4. Jika challenge gagal, tampilkan pesan dan berhenti
+        if (!challengeSuccess) {
             Swal.fire({
                 icon: "error",
-                title: "Validasi Gagal!!!",
+                title: "Validasi Gagal!",
                 text: "Gerakan tidak sesuai tantangan."
             });
             return;
         }
 
-        // Langkah 2: Ambil gambar dan kirim data ke backend
+        // 5. Jika challenge berhasil, lanjutkan capture gambar
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
-        const CTX = canvas.getContext("2d");
-        if (!CTX) return;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
-        CTX.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-
-        canvas.toBlob(async blob => {
+        canvas.toBlob(async (blob) => {
             if (!blob) return;
 
             const formData = new FormData();
             formData.append("face", blob, "selfie.jpg");
             formData.append("latitude", String(location.latitude));
             formData.append("longitude", String(location.longitude));
+            formData.append("challengePassed", challengeSuccess ? "true" : "false");
 
             try {
                 const response = await axios.post(
@@ -166,28 +164,34 @@ export default function AttendanceService() {
                     { headers: { "Content-Type": "multipart/form-data" } }
                 );
 
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!!!',
-                    text: response.data.message,
-                    confirmButtonText: 'Tutup'
-                }).then(() => {
-                    router.push(`/employees/${slug}/info/${id}`);
-                });
-            } catch (err) {
-                let errorMsg = "Terjadi kesalahan saat mengirim data. Silakan coba lagi.";
-                if (err.response && err.response.data && err.response.data.message) {
-                    errorMsg = err.response.data.message;
+                if (response.data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Absensi Berhasil!',
+                        text: response.data.message,
+                    }).then(() => {
+                        router.push(`/employees/${slug}/info/${id}`);
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: response.data.message,
+                    });
+                }
+            } catch (error) {
+                let errorMessage = "Terjadi kesalahan saat mengirim data";
+                if (error.response?.data?.message) {
+                    errorMessage = error.response.data.message;
                 }
                 Swal.fire({
                     icon: 'error',
-                    title: 'Gagal!!!',
-                    text: errorMsg,
-                    confirmButtonText: 'Tutup'
+                    title: 'Error',
+                    text: errorMessage,
                 });
             }
-        }, "image/png");
-    }
+        }, "image/jpeg", 0.9);
+    };
 
 
     useEffect(() => {

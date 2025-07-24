@@ -71,6 +71,10 @@ export default function Profile() {
                     Swal.showValidationMessage('Password tidak cocok');
                     return false;
                 }
+                if (password.length < 8) {
+                    Swal.showValidationMessage('Password harus minimal 8 karakter');
+                    return false;
+                }
                 return { password };
             },
             customClass: {

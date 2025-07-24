@@ -31,7 +31,7 @@ exports.createAttendance = async (req, res) => {
         }
 
         const { slug, eventId, tahap } = req.params;
-        const { latitude, longitude } = req.body;
+        const { latitude, longitude, challengePassed } = req.body;
 
         const user = await User.findOne({ slug });
         if (!user || !user.face_data) {
@@ -50,7 +50,15 @@ exports.createAttendance = async (req, res) => {
         if (!face_match) {
             return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
         }
-        const status = face_match ? "berhasil" : "gagal";
+
+        if (challengePassed !== "true") {
+            return res.status(400).json({
+                message: "Challenge gagal!",
+                success: false,
+                face_match: true
+            });
+        }
+
 
         const attendance = new Attendance({
             event_id: eventId,
@@ -62,7 +70,7 @@ exports.createAttendance = async (req, res) => {
                 longitude: parseFloat(longitude)
             },
             face_match,
-            status
+            status: "berhasil"
         });
 
         await attendance.save();
@@ -70,7 +78,7 @@ exports.createAttendance = async (req, res) => {
         res.status(200).json({
             message: "Absensi Berhasil!",
             success: true,
-            status,
+            status: "berhasil",
             distance: Face_Matching,
             face_match
         })
