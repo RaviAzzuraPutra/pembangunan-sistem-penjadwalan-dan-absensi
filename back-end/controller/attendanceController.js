@@ -33,6 +33,7 @@ exports.createAttendance = async (req, res) => {
         const { slug, eventId, tahap } = req.params;
         const { latitude, longitude, challengePassed } = req.body;
 
+        // Verifikasi wajah lagi untuk memastikan
         const user = await User.findOne({ slug });
         if (!user || !user.face_data) {
             return res.status(404).json({ message: "User tidak ditemukan atau belum memiliki data wajah" });
@@ -47,8 +48,13 @@ exports.createAttendance = async (req, res) => {
         const Face_Matching = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
         const threshold = 0.6;
         const face_match = Face_Matching <= threshold;
+
         if (!face_match) {
-            return res.status(400).json({ message: "Wajah tidak cocok!", success: false, distance: Face_Matching });
+            return res.status(400).json({
+                message: "Wajah tidak cocok!",
+                success: false,
+                distance: Face_Matching
+            });
         }
 
         if (challengePassed !== "true") {
@@ -59,7 +65,7 @@ exports.createAttendance = async (req, res) => {
             });
         }
 
-
+        // Buat data absensi
         const attendance = new Attendance({
             event_id: eventId,
             user_id: user._id,
@@ -75,20 +81,20 @@ exports.createAttendance = async (req, res) => {
 
         await attendance.save();
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Absensi Berhasil!",
             success: true,
             status: "berhasil",
             distance: Face_Matching,
             face_match
-        })
+        });
+
     } catch (error) {
-        console.error("Terjadi kesalahan saat membuat absensi:", error);
-        res.status(500).json({
+        console.error("Error creating attendance:", error);
+        return res.status(500).json({
             success: false,
-            message: "Terjadi kesalahan server",
-            error: error.message || "Internal Server Error"
-        })
+            message: "Terjadi kesalahan server"
+        });
     }
 }
 
@@ -527,3 +533,48 @@ exports.periodicFaceFail = async (req, res) => {
         });
     }
 };
+
+// Endpoint baru untuk verifikasi wajah
+exports.verifyFace = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "Tidak ada file yang diupload" });
+        }
+
+        const { slug } = req.params;
+        const user = await User.findOne({ slug });
+
+        if (!user || !user.face_data) {
+            return res.status(404).json({
+                message: "User tidak ditemukan atau belum memiliki data wajah",
+                face_match: false
+            });
+        }
+
+        const newDescriptor = await detectFace(req.file.buffer);
+        if (!newDescriptor) {
+            return res.status(400).json({
+                message: "Wajah tidak terdeteksi!",
+                face_match: false
+            });
+        }
+
+        const storedDescriptor = JSON.parse(user.face_data);
+        const Face_Matching = faceapi.euclideanDistance(newDescriptor, storedDescriptor);
+        const threshold = 0.6;
+        const face_match = Face_Matching <= threshold;
+
+        return res.status(200).json({
+            face_match,
+            distance: Face_Matching,
+            message: face_match ? "Wajah cocok" : "Wajah tidak cocok"
+        });
+
+    } catch (error) {
+        console.error("Error verifying face:", error);
+        return res.status(500).json({
+            face_match: false,
+            message: "Terjadi kesalahan server"
+        });
+    }
+}

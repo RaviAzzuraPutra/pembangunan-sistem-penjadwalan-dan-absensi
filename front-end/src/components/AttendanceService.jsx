@@ -92,91 +92,120 @@ export default function AttendanceService() {
     const handleCaptureFromCamera = async () => {
         if (!videoRef.current) return;
 
-        // 1. Tampilkan challenge terlebih dahulu
-        setShowValidationText(true);
-        setChallengeText('');
-
-        // 2. Generate random challenge
-        const directions = ['left', 'right'];
-        const randomDir = directions[Math.floor(Math.random() * directions.length)];
-        const challengeMessage = randomDir === 'left'
-            ? 'Gerakkan kepala ke KIRI'
-            : 'Gerakkan kepala ke KANAN';
-        setChallengeText(challengeMessage);
-
-        await new Promise(r => setTimeout(r, 500));
-
-        // 3. Proses validasi challenge
-        let challengeSuccess = false;
-        const videoWidth = videoRef.current.videoWidth;
-
-        for (let i = 0; i < 10; i++) {
-            const result = await analyzeFace(videoRef.current);
-            if (!result) continue;
-
-            const nose = result.nose;
-            const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
-
-            if (randomDir === 'left' && noseX > videoWidth / 2 + 30) {
-                challengeSuccess = true;
-                break;
-            }
-            if (randomDir === 'right' && noseX < videoWidth / 2 - 30) {
-                challengeSuccess = true;
-                break;
-            }
-
-            await new Promise(r => setTimeout(r, 400));
-        }
-
-        setShowValidationText(false);
-
-        // 4. Jika challenge gagal, tampilkan pesan dan berhenti
-        if (!challengeSuccess) {
-            Swal.fire({
-                icon: "error",
-                title: "Validasi Gagal!",
-                text: "Gerakan tidak sesuai tantangan."
-            });
-            return;
-        }
-
-        // 5. Jika challenge berhasil, lanjutkan capture gambar
+        // 1. Ambil gambar untuk verifikasi wajah terlebih dahulu
         const canvas = document.createElement("canvas");
         canvas.width = videoRef.current.videoWidth;
         canvas.height = videoRef.current.videoHeight;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
+        // 2. Kirim gambar ke backend untuk verifikasi wajah
         canvas.toBlob(async (blob) => {
             if (!blob) return;
 
-            const formData = new FormData();
-            formData.append("face", blob, "selfie.jpg");
-            formData.append("latitude", String(location.latitude));
-            formData.append("longitude", String(location.longitude));
-            formData.append("challengePassed", challengeSuccess ? "true" : "false");
+            const verifyFormData = new FormData();
+            verifyFormData.append("face", blob, "verify.jpg");
 
             try {
-                const response = await axios.post(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
-                    formData,
+                // Verifikasi wajah terlebih dahulu
+                const verifyResponse = await axios.post(
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/verify-face/${slug}`,
+                    verifyFormData,
                     { headers: { "Content-Type": "multipart/form-data" } }
                 );
 
-                if (response.data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Absensi Berhasil!',
-                        text: response.data.message,
-                    }).then(() => {
-                        router.push(`/employees/${slug}/info/${id}`);
-                    });
+                // 3. Jika wajah cocok, lanjutkan ke challenge
+                if (verifyResponse.data.face_match) {
+                    // Tampilkan challenge
+                    setShowValidationText(true);
+                    setChallengeText('');
+
+                    // Generate random challenge
+                    const directions = ['left', 'right'];
+                    const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                    const challengeMessage = randomDir === 'left'
+                        ? 'Gerakkan kepala ke KIRI'
+                        : 'Gerakkan kepala ke KANAN';
+                    setChallengeText(challengeMessage);
+
+                    await new Promise(r => setTimeout(r, 500));
+
+                    // Proses validasi challenge
+                    let challengeSuccess = false;
+                    const videoWidth = videoRef.current.videoWidth;
+
+                    for (let i = 0; i < 10; i++) {
+                        const result = await analyzeFace(videoRef.current);
+                        if (!result) continue;
+
+                        const nose = result.nose;
+                        const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
+
+                        if (randomDir === 'left' && noseX > videoWidth / 2 + 30) {
+                            challengeSuccess = true;
+                            break;
+                        }
+                        if (randomDir === 'right' && noseX < videoWidth / 2 - 30) {
+                            challengeSuccess = true;
+                            break;
+                        }
+
+                        await new Promise(r => setTimeout(r, 400));
+                    }
+
+                    setShowValidationText(false);
+
+                    if (!challengeSuccess) {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Validasi Gagal!",
+                            text: "Gerakan tidak sesuai tantangan."
+                        });
+                        return;
+                    }
+
+                    // 4. Jika challenge berhasil, kirim data absensi
+                    const finalCanvas = document.createElement("canvas");
+                    finalCanvas.width = videoRef.current.videoWidth;
+                    finalCanvas.height = videoRef.current.videoHeight;
+                    const finalCtx = finalCanvas.getContext("2d");
+                    finalCtx.drawImage(videoRef.current, 0, 0, finalCanvas.width, finalCanvas.height);
+
+                    finalCanvas.toBlob(async (finalBlob) => {
+                        if (!finalBlob) return;
+
+                        const formData = new FormData();
+                        formData.append("face", finalBlob, "selfie.jpg");
+                        formData.append("latitude", String(location.latitude));
+                        formData.append("longitude", String(location.longitude));
+                        formData.append("challengePassed", "true");
+
+                        try {
+                            const response = await axios.post(
+                                `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/create/${slug}/event/${id}/tahap/${tahap}`,
+                                formData,
+                                { headers: { "Content-Type": "multipart/form-data" } }
+                            );
+
+                            if (response.data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Absensi Berhasil!',
+                                    text: response.data.message,
+                                }).then(() => {
+                                    router.push(`/employees/${slug}/info/${id}`);
+                                });
+                            }
+                        } catch (error) {
+                            // Error handling
+                        }
+                    }, "image/jpeg", 0.9);
                 } else {
+                    // Jika wajah tidak cocok
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: response.data.message,
+                        icon: "error",
+                        title: "Verifikasi Gagal",
+                        text: verifyResponse.data.message || "Wajah tidak cocok!"
                     });
                 }
             } catch (error) {

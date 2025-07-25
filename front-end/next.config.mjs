@@ -8,6 +8,6 @@ export default withPWA({
     dest: "public",
     skipWaiting: true,
     clientsClaim: true,
-    swSrc: "public/sw-custom.js",
+    swSrc: "service-worker.js",
     register: true,
 })(nextConfig);
