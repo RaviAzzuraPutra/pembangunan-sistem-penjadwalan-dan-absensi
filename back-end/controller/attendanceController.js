@@ -567,7 +567,7 @@ exports.verifyFace = async (req, res) => {
         return res.status(200).json({
             face_match,
             distance: Face_Matching,
-            message: face_match ? "Wajah cocok" : "Wajah tidak cocok"
+            message: face_match ? "Wajah cocok!" : "Wajah tidak cocok!"
         });
 
     } catch (error) {
