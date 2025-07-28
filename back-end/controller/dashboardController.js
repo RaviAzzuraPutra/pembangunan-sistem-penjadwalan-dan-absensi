@@ -3,7 +3,7 @@ const Event = require('../models/Event');
 
 exports.getDashboardData = async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments();
+        const totalUsers = await User.countDocuments({ role: 'karyawan' });
         const totalEvents = await Event.countDocuments();
 
         const now = new Date();
