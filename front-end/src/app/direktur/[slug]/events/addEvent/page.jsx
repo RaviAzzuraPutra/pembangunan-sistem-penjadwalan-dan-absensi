@@ -311,14 +311,14 @@ export default function AddEvent() {
         const allKaryawanSet = new Set([...gudangIds, ...dapurIds, supervisorId]);
         const totalKaryawan = allKaryawanSet.size;
 
-        // if (totalKaryawan < 35 || totalKaryawan > 50) {
-        //     Swal.fire({
-        //         icon: 'error',
-        //         title: 'Jumlah Karyawan Tidak Valid',
-        //         text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
-        //     });
-        //     return;
-        // }
+        if (totalKaryawan < 35 || totalKaryawan > 50) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Jumlah Karyawan Tidak Valid',
+                text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
+            });
+            return;
+        }
 
         if (selectedGudang.length === 0) {
             Swal.fire({
@@ -483,29 +483,29 @@ export default function AddEvent() {
                 {/* Info Acara */}
                 <div>
                     <label className="block mb-2 font-medium">Nama Acara</label>
-                    <input type="text" className="w-full border px-3 py-2 rounded" value={namaAcara} onChange={(e) => setNamaAcara(e.target.value)} required />
+                    <input type="text" className="w-full border px-3 py-2 rounded" value={namaAcara} onChange={(e) => setNamaAcara(e.target.value)} />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Porsi</label>
-                    <input type="text" className="w-full border px-3 py-2 rounded" value={porsi} onChange={(e) => setPorsi(e.target.value)} required />
+                    <input type="text" className="w-full border px-3 py-2 rounded" value={porsi} onChange={(e) => setPorsi(e.target.value)} />
                 </div>
 
                 {/* Jadwal Prepare dan Service */}
                 <div>
                     <label className="block mb-2 font-medium">Prepare</label>
-                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} required />
+                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={prepareDate} onChange={(e) => setPrepareDate(e.target.value)} />
                     <span>Waktu Mulai Prepare</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' required />
+                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={prepareStartTime} onChange={(e) => setPrepareStartTime(e.target.value)} placeholder='waktu mulai' />
                     <span>Waktu Selesai Prepare</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' required />
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={prepareEndTime} onChange={(e) => setPrepareEndTime(e.target.value)} placeholder='waktu selesai' />
                 </div>
                 <div>
                     <label className="block mb-2 font-medium">Service</label>
-                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} required />
+                    <input type="date" className="w-full border px-3 py-2 rounded mb-3" value={serviceDate} onChange={(e) => setServiceDate(e.target.value)} />
                     <span>Waktu Mulai Service</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' required />
+                    <input type="time" className="w-full border px-3 py-2 rounded mb-2" value={serviceStartTime} onChange={(e) => setServiceStartTime(e.target.value)} placeholder='waktu mulai' />
                     <span>Waktu Selesai Service</span>
-                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' required />
+                    <input type="time" className="w-full border px-3 py-2 rounded" value={serviceEndTime} onChange={(e) => setServiceEndTime(e.target.value)} placeholder='waktu selesai' />
                 </div>
 
                 {/* Supervisor */}

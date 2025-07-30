@@ -70,6 +70,16 @@ export default function UpdateUser() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (formData.name.length < 3 || formData.name.length > 50 || formData.name.trim() === "") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nama Tidak Valid!',
+                text: "Nama harus antara 3 dan 50 karakter dan tidak boleh kosong.",
+            });
+            return;
+        }
+
+
         if (selectedJobdesk.length === 0) {
             Swal.fire({
                 icon: 'error',
@@ -79,12 +89,23 @@ export default function UpdateUser() {
             return;
         }
 
-
-        if (formData.name.length < 3 || formData.name.length > 50 || formData.name.trim() === "") {
+        //validasi nomor telepon tidak diisi
+        if (!formData.phone || formData.phone.trim() === "") {
             Swal.fire({
                 icon: 'error',
-                title: 'Nama Tidak Valid!',
-                text: "Nama harus antara 3 dan 50 karakter dan tidak boleh kosong.",
+                title: 'Nomor Telepon Tidak Valid!',
+                text: "Nomor telepon tidak boleh kosong.",
+            });
+            return;
+        }
+
+        //validasi nomor telepon tidak sesuai format
+        const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{6,11}$/;
+        if (!phoneRegex.test(formData.phone)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nomor Telepon Tidak Valid!',
+                text: "Nomor telepon harus diawali dengan 62, dan diikuti oleh 8 digit angka.",
             });
             return;
         }
@@ -127,7 +148,6 @@ export default function UpdateUser() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        required
                         placeholder="masukkan nama lengkap"
                     />
                 </div>
@@ -148,7 +168,6 @@ export default function UpdateUser() {
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        required
                         placeholder="ex: 081234567890"
                     />
                 </div>

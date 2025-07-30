@@ -53,16 +53,6 @@ export default function AddUser() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (selectedJobdesk.length === 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Jobdesk Tidak Dipilih!',
-                text: "Anda harus memilih setidaknya satu jobdesk.",
-            });
-            return;
-        }
-
-
         if (formData.name.length < 3 || formData.name.length > 50 || formData.name.trim() === "") {
             Swal.fire({
                 icon: 'error',
@@ -77,6 +67,36 @@ export default function AddUser() {
                 icon: 'error',
                 title: 'Password Tidak Valid!',
                 text: "Password minimal harus 8 karakter.",
+            });
+            return;
+        }
+
+        //validasi nomor telepon tidak diisi
+        if (!formData.phone || formData.phone.trim() === "") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nomor Telepon Tidak Valid!',
+                text: "Nomor telepon tidak boleh kosong.",
+            });
+            return;
+        }
+
+        //validasi nomor telepon tidak sesuai format
+        const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{6,11}$/;
+        if (!phoneRegex.test(formData.phone)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nomor Telepon Tidak Valid!',
+                text: "Nomor telepon harus diawali dengan 62, dan diikuti oleh 8 digit angka.",
+            });
+            return;
+        }
+
+        if (selectedJobdesk.length === 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Jobdesk Tidak Dipilih!',
+                text: "Anda harus memilih setidaknya satu jobdesk.",
             });
             return;
         }
@@ -119,7 +139,6 @@ export default function AddUser() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        required
                         placeholder="masukkan nama lengkap"
                     />
                 </div>
@@ -130,7 +149,6 @@ export default function AddUser() {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        required
                         placeholder="masukkan password"
                     />
                 </div>
@@ -141,7 +159,6 @@ export default function AddUser() {
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        required
                         placeholder="ex: 081234567890"
                     />
                 </div>
