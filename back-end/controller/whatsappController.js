@@ -21,7 +21,7 @@ let isReady = false;
 const initClient = () => {
     clearDebugLog();
     client = new Client({
-        authStrategy: new LocalAuth(),
+        authStrategy: new LocalAuth({ dataPath: './sessions' }),
         puppeteer: {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
