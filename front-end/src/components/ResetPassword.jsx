@@ -20,7 +20,7 @@ export default function ResetPassword() {
         if (password !== confirmPassword) {
             Swal.fire({
                 icon: 'error',
-                title: 'Password Tidak Sama!',
+                title: 'Password Tidak Sama!!!',
                 text: "Password dan konfirmasi password tidak sama.",
             });
             return;
@@ -29,7 +29,7 @@ export default function ResetPassword() {
         if (password.length < 8) {
             Swal.fire({
                 icon: 'error',
-                title: 'Password Terlalu Pendek!',
+                title: 'Password Terlalu Pendek!!!',
                 text: "Password harus minimal 8 karakter.",
             });
             return;

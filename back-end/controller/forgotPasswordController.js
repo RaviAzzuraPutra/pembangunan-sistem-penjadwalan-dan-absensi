@@ -38,13 +38,13 @@ exports.verifyOTP = async (req, res) => {
     const user = await User.findOne({ ID_Login });
 
     if (!user) {
-        return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+        return res.status(404).json({ success: false, message: "ID_Login tidak ditemukan!!!" });
     }
 
     const record = await OTP.findOne({ user_id: user._id, otp });
 
     if (!record || record.expiredAt < new Date()) {
-        return res.status(400).json({ message: 'OTP kadaluarsa atau tidak valid' });
+        return res.status(400).json({ message: 'OTP kadaluarsa atau tidak valid!!!' });
     }
 
     await OTP.deleteMany({ user_id: user._id });

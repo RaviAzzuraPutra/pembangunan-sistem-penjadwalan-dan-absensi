@@ -68,11 +68,11 @@ export default function Profile() {
                     return false;
                 }
                 if (password !== confirm) {
-                    Swal.showValidationMessage('Password tidak cocok');
+                    Swal.showValidationMessage('Password Tidak Sama!!!');
                     return false;
                 }
                 if (password.length < 8) {
-                    Swal.showValidationMessage('Password harus minimal 8 karakter');
+                    Swal.showValidationMessage('Password Terlalu Pendek!!!');
                     return false;
                 }
                 return { password };
