@@ -62,6 +62,16 @@ export default function AddUser() {
             return;
         }
 
+        //validasi password tidak diisi
+        if (!formData.password || formData.password.trim() === "") {
+            Swal.fire({
+                icon: 'error',
+                title: 'Password Tidak Valid!!!',
+                text: "Password tidak boleh kosong.",
+            });
+            return;
+        }
+
         if (formData.password.length < 8) {
             Swal.fire({
                 icon: 'error',
