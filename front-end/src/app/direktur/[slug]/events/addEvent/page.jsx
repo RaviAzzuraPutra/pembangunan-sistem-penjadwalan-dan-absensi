@@ -283,7 +283,7 @@ export default function AddEvent() {
             return;
         }
 
-        if (new Date(prepareDate) = new Date()) {
+        if (new Date(prepareDate).toDateString() === new Date().toDateString()) {
             Swal.fire({
                 icon: 'error',
                 title: 'Tanggal Prepare Tidak Valid',

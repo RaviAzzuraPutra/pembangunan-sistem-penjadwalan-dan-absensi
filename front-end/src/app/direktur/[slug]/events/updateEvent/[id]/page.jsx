@@ -317,6 +317,15 @@ export default function UpdateEvent() {
             return;
         }
 
+        if (new Date(prepareDate).toDateString() === new Date().toDateString()) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Prepare Tidak Valid',
+                text: 'Tanggal prepare sama dengan tanggal hari ini.',
+            });
+            return;
+        }
+
         if (!selectedSupervisor) {
             Swal.fire({
                 icon: 'error',
