@@ -21,7 +21,7 @@ let isReady = false;
 const initClient = () => {
     clearDebugLog();
     client = new Client({
-        authStrategy: new LocalAuth({ dataPath: './sessions' }),
+        authStrategy: new LocalAuth(),
         puppeteer: {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -41,29 +41,16 @@ const initClient = () => {
 
     client.on('auth_failure', async (msg) => {
         console.error("Autentikasi Gagal:", msg);
-        fs.rmSync('./sessions', { recursive: true, force: true }); // hapus sesi rusak
-        isReady = false;
-        initClient(); // re-init
     });
 
     client.on('disconnected', async (reason) => {
         isReady = false;
-        console.warn("WhatsApp Terputus:", reason);
-        console.log("Menginisialisasi ulang client...");
-
-        try {
-            await client.destroy();
-        } catch (err) {
-            console.error("Gagal destroy client:", err.message);
+        if (client) {
+            try { await client.destroy(); }
+            catch (err) { console.error("Gagal destroy:", err.message); }
         }
 
-        setTimeout(() => {
-            try {
-                initClient();
-            } catch (err) {
-                console.error("Gagal init ulang client:", err.message);
-            }
-        }, 5000);
+        setTimeout(initClient, 5000);
     });
 
     client.on('error', (err) => {
