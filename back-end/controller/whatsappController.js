@@ -39,9 +39,11 @@ const initClient = () => {
         console.log("WhatsApp Client Siap Digunakan!");
     });
 
-    client.on('auth_failure', (msg) => {
-        isReady = false;
+    client.on('auth_failure', async (msg) => {
         console.error("Autentikasi Gagal:", msg);
+        fs.rmSync('./sessions', { recursive: true, force: true }); // hapus sesi rusak
+        isReady = false;
+        initClient(); // re-init
     });
 
     client.on('disconnected', async (reason) => {
@@ -93,8 +95,8 @@ const getQRCode = async (req, res) => {
         const qrImage = await qrcode.toDataURL(qrCodeData);
         res.status(200).json({
             qr: qrImage,
+            connected: false,
             message: "QR Code Siap!",
-            connected: false
         });
     } catch (error) {
         res.status(500).json({

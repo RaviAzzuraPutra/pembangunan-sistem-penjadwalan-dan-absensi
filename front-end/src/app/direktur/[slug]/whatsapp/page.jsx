@@ -15,13 +15,15 @@ export default function Whatsapp() {
                 const data = response.data;
 
                 if (data.connected) {
-                    setLoading("connected")
+                    setLoading("connected");
+                    setQRImage(null); // Hapus QR agar tidak tampil
                 } else if (data.qr) {
                     setQRImage(data.qr);
-                    setLoading("Silahkan Scan QR Code di atas")
+                    setLoading("Silahkan Scan QR Code di atas");
                 } else {
                     setLoading(data.message || "Menunggu QR Code...");
                 }
+
 
             } catch (error) {
                 console.log("Terjasi kesalahan saat mengambil QR Code:", error);
