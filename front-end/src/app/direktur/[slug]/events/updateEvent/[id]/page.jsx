@@ -257,7 +257,7 @@ export default function UpdateEvent() {
         if (!namaAcara) {
             Swal.fire({
                 icon: 'error',
-                title: 'Nama Acara Tidak Boleh Kosong',
+                title: 'Nama Acara Tidak Boleh Kosong!!!',
                 text: 'Silakan masukkan nama acara.',
             });
             return;
@@ -266,7 +266,7 @@ export default function UpdateEvent() {
         if (!porsi || isNaN(porsi) || porsi <= 0) {
             Swal.fire({
                 icon: 'error',
-                title: 'Porsi Tidak Valid',
+                title: 'Porsi Tidak Valid!!!',
                 text: 'Silakan masukkan jumlah porsi yang valid.',
             });
             return;
@@ -275,7 +275,7 @@ export default function UpdateEvent() {
         if (!prepareDate) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Prepare Tidak Boleh Kosong',
+                title: 'Tanggal Prepare Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih tanggal prepare untuk acara ini.',
             });
             return;
@@ -284,7 +284,7 @@ export default function UpdateEvent() {
         if (!serviceDate) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Service Tidak Boleh Kosong',
+                title: 'Tanggal Service Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih tanggal service untuk acara ini.',
             });
             return;
@@ -293,7 +293,7 @@ export default function UpdateEvent() {
         if (!prepareStartTime || !prepareEndTime) {
             Swal.fire({
                 icon: 'error',
-                title: 'Waktu Prepare Tidak Boleh Kosong',
+                title: 'Waktu Prepare Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih waktu mulai dan selesai prepare.',
             });
             return;
@@ -302,7 +302,7 @@ export default function UpdateEvent() {
         if (!serviceStartTime || !serviceEndTime) {
             Swal.fire({
                 icon: 'error',
-                title: 'Waktu Service Tidak Boleh Kosong',
+                title: 'Waktu Service Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih waktu mulai dan selesai service.',
             });
             return;
@@ -311,7 +311,7 @@ export default function UpdateEvent() {
         if (new Date(prepareDate) > new Date(serviceDate)) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid',
+                title: 'Tanggal Prepare Tidak Valid!!!',
                 text: 'Tanggal prepare harus sebelum tanggal service.',
             });
             return;
@@ -320,7 +320,7 @@ export default function UpdateEvent() {
         if (new Date(prepareDate).toDateString() === new Date().toDateString()) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid',
+                title: 'Tanggal Prepare Tidak Valid!!!',
                 text: 'Tanggal prepare sama dengan tanggal hari ini.',
             });
             return;
@@ -329,7 +329,7 @@ export default function UpdateEvent() {
         if (!selectedSupervisor) {
             Swal.fire({
                 icon: 'error',
-                title: 'Supervisor Tidak Boleh Kosong',
+                title: 'Supervisor Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih supervisor untuk acara ini.',
             });
             return;
@@ -348,7 +348,7 @@ export default function UpdateEvent() {
         if (totalKaryawan < 35 || totalKaryawan > 50) {
             Swal.fire({
                 icon: 'error',
-                title: 'Jumlah Karyawan Tidak Valid',
+                title: 'Jumlah Karyawan Tidak Valid!!!',
                 text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus minimal 35 orang dan maksimal 50 orang.',
             });
             return;
@@ -357,7 +357,7 @@ export default function UpdateEvent() {
         if (new Date(prepareDate) > new Date(serviceDate)) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid',
+                title: 'Tanggal Prepare Tidak Valid!!!',
                 text: 'Tanggal prepare harus sebelum tanggal service.',
             });
             return;
@@ -366,7 +366,7 @@ export default function UpdateEvent() {
         if (selectedGudang.length === 0) {
             Swal.fire({
                 icon: "error",
-                title: "Karyawan Gudang Tidak Boleh Kosong",
+                title: "Karyawan Gudang Tidak Boleh Kosong!!!",
                 text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
             });
             return;
@@ -377,7 +377,7 @@ export default function UpdateEvent() {
         if (!hasPenanggungJawab) {
             Swal.fire({
                 icon: "error",
-                title: "Penanggung Jawab Dapur Tidak Boleh Kosong",
+                title: "Penanggung Jawab Dapur Tidak Boleh Kosong!!!",
                 text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
             })
             return;
@@ -386,7 +386,7 @@ export default function UpdateEvent() {
         if (!selectedLocation) {
             Swal.fire({
                 icon: 'error',
-                title: 'Lokasi Tidak Ditemukan',
+                title: 'Lokasi Tidak Ditemukan!!!',
                 text: 'Silakan pilih lokasi acara terlebih dahulu.',
             });
             return;
@@ -396,7 +396,7 @@ export default function UpdateEvent() {
         if (!polygon || polygon.length < 4) {
             Swal.fire({
                 icon: 'error',
-                title: 'Polygon Tidak Valid',
+                title: 'Polygon Tidak Valid!!!',
                 text: 'Silakan gambar polygon dengan minimal 4 titik.',
             });
             return;

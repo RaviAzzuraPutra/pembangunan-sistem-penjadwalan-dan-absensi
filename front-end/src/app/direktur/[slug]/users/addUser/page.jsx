@@ -53,11 +53,11 @@ export default function AddUser() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (formData.name.length < 3 || formData.name.length > 50 || formData.name.trim() === "") {
+        if (formData.name.length < 3 || formData.name.trim() === "") {
             Swal.fire({
                 icon: 'error',
-                title: 'Nama Tidak Valid!',
-                text: "Nama harus antara 3 dan 50 karakter dan tidak boleh kosong.",
+                title: 'Nama Tidak Valid!!!!',
+                text: "Nama harus 3 karakter dan tidak boleh kosong.",
             });
             return;
         }
@@ -65,7 +65,7 @@ export default function AddUser() {
         if (formData.password.length < 8) {
             Swal.fire({
                 icon: 'error',
-                title: 'Password Tidak Valid!',
+                title: 'Password Tidak Valid!!!',
                 text: "Password minimal harus 8 karakter.",
             });
             return;
@@ -75,7 +75,7 @@ export default function AddUser() {
         if (!formData.phone || formData.phone.trim() === "") {
             Swal.fire({
                 icon: 'error',
-                title: 'Nomor Telepon Tidak Valid!',
+                title: 'Nomor Telepon Tidak Valid!!!',
                 text: "Nomor telepon tidak boleh kosong.",
             });
             return;
@@ -86,7 +86,7 @@ export default function AddUser() {
         if (!phoneRegex.test(formData.phone)) {
             Swal.fire({
                 icon: 'error',
-                title: 'Nomor Telepon Tidak Valid!',
+                title: 'Nomor Telepon Tidak Valid!!!',
                 text: "Nomor telepon harus diawali dengan 62, dan diikuti oleh 8 digit angka.",
             });
             return;
@@ -95,7 +95,7 @@ export default function AddUser() {
         if (selectedJobdesk.length === 0) {
             Swal.fire({
                 icon: 'error',
-                title: 'Jobdesk Tidak Dipilih!',
+                title: 'Jobdesk Tidak Dipilih!!!',
                 text: "Anda harus memilih setidaknya satu jobdesk.",
             });
             return;
