@@ -21,7 +21,7 @@ let isReady = false;
 const initClient = () => {
     clearDebugLog();
     client = new Client({
-        authStrategy: new LocalAuth(),
+        authStrategy: new LocalAuth({ dataPath: './sessions' }),
         puppeteer: {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -77,15 +77,15 @@ initClient();
 const getQRCode = async (req, res) => {
     if (isReady) {
         return res.status(200).json({
+            connected: true,
             message: "WhatsApp Client Siap Digunakan!",
-            connected: true
         });
     }
 
     if (!qrCodeData) {
         return res.status(200).json({
+            connected: false,
             message: "QR Code Belum Siap!",
-            connected: false
         });
     }
 

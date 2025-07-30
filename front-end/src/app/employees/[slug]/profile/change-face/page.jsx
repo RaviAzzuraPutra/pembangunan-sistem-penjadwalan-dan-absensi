@@ -19,7 +19,7 @@ export default function ChangeFace() {
     useEffect(() => {
         const enableCamera = async () => {
             try {
-                await loadModels(); // Load face detection models if needed
+                await loadModels();
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, facingMode: "user" })
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream

@@ -269,7 +269,7 @@ export default function InfoEventPageEmployees() {
                     </div>
                 </div>
 
-                {insideArea && !isFakeGpsDetected ? ( // Tambahkan !isFakeGpsDetected di sini
+                {insideArea && !isFakeGpsDetected ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5">
                         {userPosition && (role === 'gudang' || role === 'supervisor') && (
                             <button

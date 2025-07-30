@@ -25,7 +25,9 @@ const detectFace = async (imageBuffer) => {
 
     try {
         const image = await canvas.loadImage(imageBuffer);
-        const detections = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })).withFaceLandmarks().withFaceDescriptor();
+        const detections = await faceapi.detectSingleFace(image, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+            .withFaceLandmarks()
+            .withFaceDescriptor();
 
         if (!detections) {
             console.warn("⚠️ Tidak ada wajah terdeteksi.");

@@ -123,109 +123,56 @@ export default function FaceVerification() {
     }, []);
 
     // Fungsi baru: handleCaptureFromCamera dengan liveness detection (gerakan kiri/kanan)
-    const handleCaptureFromCamera = async () => {
-        if (!videoRef.current) return;
-        setSelfieTaken(true); // agar timer tidak trigger fail
+    const handleCapture = async () => {
 
-        const canvas = document.createElement("canvas");
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        const CTX = canvas.getContext("2d");
-        if (!CTX) return
+        if (!videoRef.current) return
 
-        CTX.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+        const canvas = document.createElement("canvas")
+        canvas.width = videoRef.current.videoWidth
+        canvas.height = videoRef.current.videoHeight
+        const context = canvas.getContext("2d")
 
-        canvas.toBlob(async blob => { // 1. Tantangan liveness: random kiri/kanan
-            const directions = ['left', 'right'];
-            const randomDir = directions[Math.floor(Math.random() * directions.length)];
-            const challengeMessage = randomDir === 'left'
-                ? 'Gerakkan kepala ke KIRI'
-                : 'Gerakkan kepala ke KANAN';
-            setChallengeText(challengeMessage);
-            setShowValidationText(true);
+        if (!context) return
 
-            await new Promise(r => setTimeout(r, 500));
+        context.save();
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        context.restore();
 
-            let challengePassed = false;
-            let bestDescriptor = null;
-            const videoWidth = videoRef.current.videoWidth;
-
-            // 2. Validasi gerakan selama 10x (sekitar 4 detik)
-            const validateLoop = async () => {
-                for (let i = 0; i < 10; i++) {
-                    const result = await analyzeFace(videoRef.current);
-                    if (!result) continue;
-
-                    descriptors.push(result.descriptor);
-
-                    const nose = result.nose;
-                    const noseX = nose.reduce((sum, p) => sum + p.x, 0) / nose.length;
-
-                    if (randomDir === 'left' && noseX > videoWidth / 2 + 30) challengePassed = true;
-                    if (randomDir === 'right' && noseX < videoWidth / 2 - 30) challengePassed = true;
-
-                    await new Promise(r => setTimeout(r, 401));
-                }
-            };
-
-            await validateLoop();
-
-            setShowValidationText(false);
-
-            if (!challengePassed || !bestDescriptor) {
+        canvas.toBlob(async blob => {
+            if (!blob || blob.size === 0) {
                 Swal.fire({
                     icon: "error",
-                    title: "Validasi Gagal!!!",
-                    text: "Gerakan tidak sesuai tantangan."
+                    title: "Capture Gagal",
+                    text: "Gagal mengambil gambar. Coba ulangi.",
                 });
-                setSelfieTaken(false); // allow retry
                 return;
             }
 
-            // 3. Kirim descriptor ke backend untuk face recognition
-            try {
-                const response = await axios.post(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/periodic-face-verification`,
-                    {
-                        user_id: id,
-                        event_id: id,
-                        faceDescriptor: Array.from(bestDescriptor),
-                    }
-                );
+            const formData = new FormData()
+            formData.append("face", blob)
 
-                if (response.data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Verifikasi Berhasil!!!',
-                        text: response.data.message,
-                        confirmButtonText: 'Tutup'
-                    }).then(() => {
-                        router.push(`/employees/${slug}`);
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal!!!',
-                        text: response.data.message,
-                        confirmButtonText: 'Tutup'
-                    });
-                    setSelfieTaken(false); // allow retry
-                }
+            try {
+                const res = await axios.put(
+                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/user/update-self/${slug}`,
+                    formData,
+                    { headers: { "Content-Type": "multipart/form-data" } }
+                )
+
+                router.push(`/employees/${slug}/profile?success=true&message=${encodeURIComponent(res.data.message)}`)
             } catch (err) {
-                let errorMsg = "Terjadi kesalahan saat mengirim data. Silakan coba lagi.";
-                if (err.response && err.response.data && err.response.data.message) {
-                    errorMsg = err.response.data.message;
-                }
+                const errorMsg = err.response?.data?.message
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal',
+                    icon: "error",
+                    title: "Gagal!!!",
                     text: errorMsg,
-                    confirmButtonText: 'Tutup'
-                });
-                setSelfieTaken(false); // allow retry
+                })
+                router.push(`/employees/${slug}/profile?success=false&message=${encodeURIComponent(errorMsg)}`)
             }
-        })
-    };
+        }, "image/jpeg")
+    }
+
 
     useEffect(() => {
         let interval;
@@ -262,7 +209,7 @@ export default function FaceVerification() {
                 </div>
                 <div
                     className="w-16 h-16 rounded-full bg-gray-500 flex items-center justify-center shadow-lg transition"
-                    onClick={handleCaptureFromCamera}
+                    onClick={handleCapture}
                 >
                     <Image
                         src="/icons/dslr-camera.png"

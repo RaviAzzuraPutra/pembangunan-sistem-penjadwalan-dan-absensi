@@ -254,6 +254,69 @@ export default function UpdateEvent() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!namaAcara) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nama Acara Tidak Boleh Kosong',
+                text: 'Silakan masukkan nama acara.',
+            });
+            return;
+        }
+
+        if (!porsi || isNaN(porsi) || porsi <= 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Porsi Tidak Valid',
+                text: 'Silakan masukkan jumlah porsi yang valid.',
+            });
+            return;
+        }
+
+        if (!prepareDate) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Prepare Tidak Boleh Kosong',
+                text: 'Silakan pilih tanggal prepare untuk acara ini.',
+            });
+            return;
+        }
+
+        if (!serviceDate) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Service Tidak Boleh Kosong',
+                text: 'Silakan pilih tanggal service untuk acara ini.',
+            });
+            return;
+        }
+
+        if (!prepareStartTime || !prepareEndTime) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Prepare Tidak Boleh Kosong',
+                text: 'Silakan pilih waktu mulai dan selesai prepare.',
+            });
+            return;
+        }
+
+        if (!serviceStartTime || !serviceEndTime) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Service Tidak Boleh Kosong',
+                text: 'Silakan pilih waktu mulai dan selesai service.',
+            });
+            return;
+        }
+
+        if (new Date(prepareDate) > new Date(serviceDate)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Prepare Tidak Valid',
+                text: 'Tanggal prepare harus sebelum tanggal service.',
+            });
+            return;
+        }
+
         if (!selectedSupervisor) {
             Swal.fire({
                 icon: 'error',

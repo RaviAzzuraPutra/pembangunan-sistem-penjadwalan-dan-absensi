@@ -220,11 +220,74 @@ export default function AddEvent() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!namaAcara) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Nama Acara Tidak Boleh Kosong',
+                text: 'Silakan masukkan nama acara.',
+            });
+            return;
+        }
+
+        if (!porsi || isNaN(porsi) || porsi <= 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Porsi Tidak Valid',
+                text: 'Silakan masukkan jumlah porsi yang valid.',
+            });
+            return;
+        }
+
+        if (!prepareDate) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Prepare Tidak Boleh Kosong',
+                text: 'Silakan pilih tanggal prepare untuk acara ini.',
+            });
+            return;
+        }
+
+        if (!serviceDate) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Service Tidak Boleh Kosong',
+                text: 'Silakan pilih tanggal service untuk acara ini.',
+            });
+            return;
+        }
+
+        if (!prepareStartTime || !prepareEndTime) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Prepare Tidak Boleh Kosong',
+                text: 'Silakan pilih waktu mulai dan selesai prepare.',
+            });
+            return;
+        }
+
+        if (!serviceStartTime || !serviceEndTime) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Service Tidak Boleh Kosong',
+                text: 'Silakan pilih waktu mulai dan selesai service.',
+            });
+            return;
+        }
+
         if (new Date(prepareDate) > new Date(serviceDate)) {
             Swal.fire({
                 icon: 'error',
                 title: 'Tanggal Prepare Tidak Valid',
                 text: 'Tanggal prepare harus sebelum tanggal service.',
+            });
+            return;
+        }
+
+        if (new Date(prepareDate) = new Date()) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Tanggal Prepare Tidak Valid',
+                text: 'Tanggal prepare sama dengan tanggal hari ini.',
             });
             return;
         }
@@ -266,7 +329,6 @@ export default function AddEvent() {
             return;
         }
 
-        // Validasi penanggung jawab dapur (jika diperlukan)
         const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
         if (!hasPenanggungJawab) {
             Swal.fire({
@@ -286,7 +348,6 @@ export default function AddEvent() {
             return;
         }
 
-        // Validasi polygon
         if (!polygon || polygon.length < 4) {
             Swal.fire({
                 icon: 'error',
@@ -600,11 +661,17 @@ export default function AddEvent() {
                     <button type='button' onClick={toggleDrawing} className='bg-green-500 text-white px-3 py-2 rounded hover:bg-green-700'>{isDrawing ? "Stop Menggambar Polygon" : "Gambar Polygon"}</button>
                     <button type="button" onClick={handleClearPolygon} className='bg-red-500 text-white px-3 py-2 rounded ml-2 hover:bg-red-700'>Hapus Polygon</button>
                 </div>
-                <MapContainer center={[-6.912463506781984, 107.57595823069134]} zoom={16} style={{ height: "400px", width: "100%" }} ref={mapRef} whenCreated={(mapInstance) => { mapRef.current = mapInstance }}>
+                <MapContainer
+                    center={[-6.912463506781984, 107.57595823069134]}
+                    zoom={16} style={{ height: "400px", width: "100%" }}
+                    ref={mapRef}
+                    whenCreated={(mapInstance) => { mapRef.current = mapInstance }}>
+
                     <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                     {selectedLocation && <Marker position={selectedLocation} icon={costumIcon} />}
                     <MapClickHandler isDrawing={isDrawing} addPoint={addPoint} handleReverseGeocode={handleReverseGeocode} />
                     {polygon.length > 0 && <Polygon positions={polygon} pathOptions={{ color: 'blue' }} />}
+
                 </MapContainer>
                 <div className="flex justify-end gap-3">
                     <button type='submit' onClick={handleSubmit} className="bg-blue-500 text-white px-2 py-1 rounded-md shadow-sm hover:bg-blue-700">SUBMIT</button>
