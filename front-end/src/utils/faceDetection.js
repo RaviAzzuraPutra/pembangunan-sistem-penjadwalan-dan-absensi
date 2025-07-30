@@ -3,49 +3,48 @@ let lastDetection = null;
 let lastDetectionTime = Date.now();
 const MAX_MISSING_MS = 1500;
 
-// Global faceapi variable for browser-only import
-let faceapi = null;
+// Simpan instance faceapi global
+let faceapiInstance = null;
 
+// Hanya import face-api.js di browser
 async function getFaceApi() {
-    if (faceapi) return faceapi;
-    // Only import in browser
-    if (typeof window !== 'undefined') {
-        faceapi = await import('face-api.js')
-        return faceapi;
-    }
-    throw new Error('face-api.js only available in browser');
+    if (faceapiInstance) return faceapiInstance;
+    if (typeof window === "undefined") throw new Error("face-api.js hanya tersedia di browser");
+
+    // Dynamic import khusus untuk browser
+    const mod = await import(/* webpackChunkName: "face-api" */ "face-api.js");
+    faceapiInstance = mod;
+    return mod;
 }
 
+// Load semua model face-api.js
 export async function loadModels() {
     const faceapi = await getFaceApi();
-    const MODEL_URL = '/models';
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    const MODEL_URL = "/models";
+    await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
 }
 
+// Deteksi wajah dan gambar bounding box
 export async function detectFace(video, canvas) {
     const faceapi = await getFaceApi();
     if (!video || !canvas || !video.videoWidth || !video.videoHeight) return;
 
-    const displaySize = {
-        width: video.videoWidth,
-        height: video.videoHeight
-    };
-
+    const displaySize = { width: video.videoWidth, height: video.videoHeight };
     canvas.width = displaySize.width;
     canvas.height = displaySize.height;
 
     faceapi.matchDimensions(canvas, displaySize);
 
-    const options = new faceapi.TinyFaceDetectorOptions({ minConfidence: 0.5 });
-    const detections = await faceapi.detectSingleFace(video, options);
+    const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ minConfidence: 0.5 }));
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const now = Date.now();
-
     const toDraw = detections || lastDetection;
 
     if (detections) {
@@ -62,16 +61,12 @@ export async function detectFace(video, canvas) {
     const resized = faceapi.resizeResults(lastDetection, displaySize);
     const box = resized.box;
 
-    ctx.strokeStyle = 'pink';
+    ctx.strokeStyle = "pink";
     ctx.lineWidth = 4;
-    ctx.strokeRect(
-        box.x - padding,
-        box.y - padding,
-        box.width + padding * 2,
-        box.height + padding * 2
-    );
+    ctx.strokeRect(box.x - padding, box.y - padding, box.width + padding * 2, box.height + padding * 2);
 }
 
+// Analisis wajah (landmarks dan descriptor)
 export async function analyzeFace(video) {
     const faceapi = await getFaceApi();
     const detection = await faceapi
@@ -79,16 +74,11 @@ export async function analyzeFace(video) {
         .withFaceLandmarks()
         .withFaceDescriptor();
 
-    if (!detection) {
-        return null;
-    }
-
-    const mouth = detection.landmarks.getMouth();
-    const nose = detection.landmarks.getNose();
+    if (!detection) return null;
 
     return {
         descriptor: detection.descriptor,
-        nose: nose,
-        mouth: mouth
-    }
+        nose: detection.landmarks.getNose(),
+        mouth: detection.landmarks.getMouth(),
+    };
 }
