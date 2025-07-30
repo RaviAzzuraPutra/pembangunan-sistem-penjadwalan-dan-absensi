@@ -16,7 +16,7 @@ exports.forgotPassword = async (req, res) => {
     if (!user) {
         return res.status(404).json({
             success: false,
-            message: "User Tidak Ditemukan"
+            message: "ID_Login tidak ditemukan!!!"
         });
     }
 

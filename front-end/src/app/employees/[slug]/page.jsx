@@ -16,7 +16,6 @@ export default function Employees() {
 
 
     useEffect(() => {
-        console.log("Slug saat useEffect:", slug);
         const fetchEvents = async () => {
             try {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/assigned/${slug}`);
