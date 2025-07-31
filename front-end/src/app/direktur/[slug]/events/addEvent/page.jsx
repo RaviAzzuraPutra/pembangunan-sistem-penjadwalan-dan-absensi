@@ -336,13 +336,23 @@ export default function AddEvent() {
             return;
         }
 
+        // Validasi penanggung jawab dapur
+        if (dapurList.length === 0) {
+            Swal.fire({
+                icon: "error",
+                title: "Menu Dapur Tidak Boleh Kosong!!!",
+                text: "Silakan tambahkan minimal satu menu dapur.",
+            });
+            return;
+        }
+
         const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
         if (!hasPenanggungJawab) {
             Swal.fire({
                 icon: "error",
                 title: "Penanggung Jawab Dapur Tidak Boleh Kosong!!!",
                 text: "Silakan pilih penanggung jawab untuk setiap menu dapur.",
-            })
+            });
             return;
         }
 
@@ -353,7 +363,6 @@ export default function AddEvent() {
             return emp ? emp._id : null;
         })).filter(Boolean);
         const supervisorId = selectedSupervisorId;
-
         const allKaryawanSet = new Set([...gudangIds, ...dapurIds, supervisorId]);
         const totalKaryawan = allKaryawanSet.size;
 

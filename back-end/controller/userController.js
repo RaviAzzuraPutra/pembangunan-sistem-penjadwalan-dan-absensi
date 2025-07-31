@@ -6,16 +6,14 @@ const sendMessage = require("../utils/send-message");
 const Jobdesk = require("../models/Jobdesk");
 require("dotenv").config();
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
 exports.createUser = async (req, res) => {
 
     try {
         let generate_ID_Login = Math.floor(100000 + Math.random() * 900000).toString();
+        let generate_slug_number = Math.floor(100 + Math.random() * 900).toString();
         const { name, password, phone, role, is_supervisor_candidate, jobdesk } = req.body;
         const hashedPassword = await bcrypt.hash(password, 11);
-        const slug = name.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "");
+        const slug = name.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "") + "-" + generate_slug_number;
         const phone_replace = phone.replace(/^0/, "62");
         const jobdeskData = await Jobdesk.find({ _id: { $in: jobdesk } });
         const jobdeskName = jobdeskData.map(jd => jd.name).join(", ");

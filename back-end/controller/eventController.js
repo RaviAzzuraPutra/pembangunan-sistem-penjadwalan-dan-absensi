@@ -17,7 +17,8 @@ webpush.setVapidDetails(
 
 exports.createEvent = async (req, res) => {
     try {
-        const slug = slugify(req.body.name, { lower: true, strict: true });
+        let generate_slug_number = Math.floor(100 + Math.random() * 900).toString();
+        const slug = slugify(req.body.name, { lower: true, strict: true }) + "-" + generate_slug_number;
 
         const newEvent = new Event({
             ...req.body,
@@ -319,8 +320,6 @@ exports.updateEvent = async (req, res) => {
             });
         }
 
-
-
         // Hapus gudang yang "tidak bisa" dan user_id-nya tidak ada di data yang baru
         if (Array.isArray(updatedEvent.gudang)) {
             updatedEvent.gudang = updatedEvent.gudang.filter(g => {
@@ -343,7 +342,6 @@ exports.updateEvent = async (req, res) => {
             });
         }
 
-
         // Simpan hasil bersih
         await updatedEvent.save();
 
@@ -358,8 +356,8 @@ exports.updateEvent = async (req, res) => {
             const phoneFormatted = user.phone.replace(/^0/, '+62');
             const message = `Hai ${user.name}, kamu mendapatkan tugas baru di event *${updatedEvent.name}*\n\n` +
                 `📛 Nama: ${updatedEvent.name}\n` +
-                `📅 Prepare: ${updatedEvent.date_prepare.toLocaleDateString()}\n` +
-                `📅 Service:  ${updatedEvent.date_service.toLocaleDateString()}\n` +
+                `📅 Prepare: ${updatedEvent.date_prepare.toLocaleDateString('id-ID')}\n` +
+                `📅 Service:  ${updatedEvent.date_service.toLocaleDateString('id-ID')}\n` +
                 `📍 Lokasi: ${updatedEvent.location?.name || '-'}\n\n` +
                 `Cek dan konfirmasi sekarang di aplikasi 👇:\n` +
                 `link login website: ${process.env.FRONTEND_ORIGIN}\n` +
@@ -428,8 +426,6 @@ exports.updateEvent = async (req, res) => {
             ];
             const users = await User.find({ _id: { $in: allUserIds } });
 
-
-
             let batch = [];
             for (let i = 0; i < users.length; i++) {
                 batch.push(users[i]);
@@ -440,8 +436,8 @@ exports.updateEvent = async (req, res) => {
                         const phoneFormatted = user.phone.replace(/^0/, "+62");
                         const message = `Hai ${user.name}, event *${updatedEvent.name}* yang kamu ikuti mengalami perubahan jadwal atau lokasi.\n\n` +
                             `📛 Nama: ${updatedEvent.name}\n` +
-                            `📅 Prepare: ${updatedEvent.date_prepare.toLocaleDateString()}\n` +
-                            `📅 Service:  ${updatedEvent.date_service.toLocaleDateString()}\n` +
+                            `📅 Prepare: ${updatedEvent.date_prepare.toLocaleDateString('id-ID')}\n` +
+                            `📅 Service:  ${updatedEvent.date_service.toLocaleDateString('id-ID')}\n` +
                             `📍 Lokasi: ${updatedEvent.location?.name || '-'}\n\n` +
                             `Cek kembali detailnya di aplikasi 👇:\n` +
                             ` ${process.env.FRONTEND_ORIGIN} \n` +
@@ -580,7 +576,8 @@ exports.deleteEvent = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Berhasil Menghapus Acara!"
+            message: "Berhasil Menghapus Acara!",
+            data: deleted,
         });
 
     } catch (error) {
