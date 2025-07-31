@@ -280,7 +280,9 @@ export default function AddEvent() {
             return;
         }
 
-        if (new Date(prepareStartTime) >= new Date(prepareEndTime)) {
+        const parseTime = (time) => new Date(`1970-01-01T${time}:00`);
+
+        if (parseTime(prepareStartTime) >= parseTime(prepareEndTime)) {
             Swal.fire({
                 icon: 'error',
                 title: 'Waktu Prepare Tidak Valid!!!',
@@ -289,7 +291,7 @@ export default function AddEvent() {
             return;
         }
 
-        if (new Date(serviceStartTime) >= new Date(serviceEndTime)) {
+        if (parseTime(serviceStartTime) >= parseTime(serviceEndTime)) {
             Swal.fire({
                 icon: 'error',
                 title: 'Waktu Service Tidak Valid!!!',
@@ -307,7 +309,7 @@ export default function AddEvent() {
             return;
         }
 
-        if (new Date(prepareDate) === new Date(serviceDate)) {
+        if (new Date(prepareDate).getTime() === new Date(serviceDate).getTime()) {
             Swal.fire({
                 icon: 'error',
                 title: 'Tanggal Prepare dan Service Tidak Boleh Sama!!!',
@@ -321,25 +323,6 @@ export default function AddEvent() {
                 icon: 'error',
                 title: 'Supervisor Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih supervisor untuk acara ini.',
-            });
-            return;
-        }
-
-        // Validasi jumlah karyawan (gudang + dapur + supervisor)
-        const gudangIds = selectedGudang.map(item => item.userId);
-        const dapurIds = dapurList.flatMap(menu => menu.penanggung_jawab.map(name => {
-            const emp = karyawanData.find(e => e.name === name);
-            return emp ? emp._id : null;
-        })).filter(Boolean);
-        const supervisorId = selectedSupervisorId;
-        const allKaryawanSet = new Set([...gudangIds, ...dapurIds, supervisorId]);
-        const totalKaryawan = allKaryawanSet.size;
-
-        if (totalKaryawan < 35 || totalKaryawan > 50) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Jumlah Karyawan Tidak Valid!!!',
-                text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
             });
             return;
         }
@@ -363,6 +346,29 @@ export default function AddEvent() {
             return;
         }
 
+        // Validasi jumlah karyawan (gudang + dapur + supervisor)
+        const gudangIds = selectedGudang.map(item => item.userId);
+        const dapurIds = dapurList.flatMap(menu => menu.penanggung_jawab.map(name => {
+            const emp = karyawanData.find(e => e.name === name);
+            return emp ? emp._id : null;
+        })).filter(Boolean);
+        const supervisorId = selectedSupervisorId;
+
+        const allKaryawanSet = new Set([...gudangIds, ...dapurIds, supervisorId]);
+        const totalKaryawan = allKaryawanSet.size;
+
+
+        if (totalKaryawan < 35 || totalKaryawan > 50) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Jumlah Karyawan Tidak Valid!!!',
+                text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
+            });
+            return;
+        }
+
+
+
         if (!selectedLocation) {
             Swal.fire({
                 icon: 'error',
@@ -372,7 +378,16 @@ export default function AddEvent() {
             return;
         }
 
-        if (!polygon || polygon.length < 4) {
+        if (!polygon) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Polygon Tidak Valid!!!',
+                text: 'Silakan polygon harus digambar terlebih dahulu.',
+            });
+            return;
+        }
+
+        if (polygon.length < 4) {
             Swal.fire({
                 icon: 'error',
                 title: 'Polygon Tidak Valid!!!',
@@ -449,8 +464,6 @@ export default function AddEvent() {
             router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
     }
-
-
 
     const jdList = Array.from(new Set(
         karyawanData.flatMap(emp =>
