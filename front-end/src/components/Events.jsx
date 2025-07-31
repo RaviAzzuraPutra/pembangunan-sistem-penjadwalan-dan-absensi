@@ -53,7 +53,6 @@ export default function Events() {
 
     const deleteEvent = async (eventID) => {
         try {
-            // Ambil info event untuk Swal (opsional)
             const { data } = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/${eventID}`);
             const event = data.data;
 
@@ -68,21 +67,29 @@ export default function Events() {
 
             if (!confirm.isConfirmed) return;
 
+            // Hapus event di server
+            await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/delete/${eventID}`);
+
+            // Jika berhasil, baru tampilkan Swal sukses
             Swal.fire({
                 icon: 'success',
                 title: 'Berhasil!!!',
                 text: "Berhasil Menghapus Acara!",
             });
 
+            // Update state lokal
             setEvents(prev => prev.filter(e => e._id !== eventID));
 
-            await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/delete/${eventID}`);
-
         } catch (error) {
-            Swal.fire("Error", "Gagal menghapus event", "error");
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!!!',
+                text: "Terjadi kesalahan saat menghapus acara. Silakan coba lagi.",
+            })
             console.error("Error saat menghapus event:", error);
         }
     };
+
 
     useEffect(() => {
         const filtered = events.filter(event =>

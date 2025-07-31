@@ -307,11 +307,11 @@ export default function AddEvent() {
             return;
         }
 
-        if (new Date(prepareDate).toDateString() === new Date().toDateString()) {
+        if (new Date(prepareDate) === new Date(serviceDate)) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid!!!',
-                text: 'Tanggal prepare sama dengan tanggal hari ini.',
+                title: 'Tanggal Prepare dan Service Tidak Boleh Sama!!!',
+                text: 'Silakan pilih tanggal prepare tidak boleh sama dengan tanggal service, harus h-1',
             });
             return;
         }
