@@ -180,6 +180,12 @@ export default function AddEvent() {
     }
 
     const addPoint = (point) => setPolygon((prev) => [...prev, point])
+    // menambahkan console.log setiap kali titik ditambahkan
+    useEffect(() => {
+        if (isDrawing) {
+            console.log("Polygon points:", polygon);
+        }
+    }, [polygon]);
     const handleClearPolygon = () => setPolygon([])
     const toggleDrawing = () => { setIsDrawing((prev) => !prev) }
 
