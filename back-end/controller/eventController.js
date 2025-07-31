@@ -491,27 +491,38 @@ exports.deleteEvent = async (req, res) => {
         const tanggalService = normalizeDate(new Date(event.date_service));
 
         const userIds = new Set();
-        // Gabungkan semua user dari gudang dan dapur
         const allUserIds = new Set();
 
         if (event.supervisor?.id?._id) {
             allUserIds.add(event.supervisor.id._id.toString());
         }
 
-        event.gudang.forEach(g => {
-            if (g.user_id?._id) {
-                allUserIds.add(g.user_id._id.toString());
-            }
+        event.gudang.forEach(g => g.user_id?._id && allUserIds.add(g.user_id._id.toString()));
+        event.dapur.forEach(menu => menu.penanggung_jawab.forEach(pj => pj.user_id?._id && allUserIds.add(pj.user_id._id.toString())));
+
+        // Hapus semua data terkait dulu
+        await Unavailability.deleteMany({
+            user_id: { $in: Array.from(userIds) },
+            $or: [
+                { date: { $gte: tanggalPrepare, $lt: new Date(tanggalPrepare.getTime() + 86400000) } },
+                { date: { $gte: tanggalService, $lt: new Date(tanggalService.getTime() + 86400000) } },
+            ],
         });
 
-        event.dapur.forEach(menu => {
-            menu.penanggung_jawab.forEach(pj => {
-                if (pj.user_id?._id) {
-                    allUserIds.add(pj.user_id._id.toString());
-                }
-            });
+        await Attendance.deleteMany({ event_id: id });
+        await Monitoring.deleteMany({ event_id: id });
+
+        // Hapus event utama
+        const deleted = await Event.findByIdAndDelete(id);
+
+        // Kirim response lebih dulu supaya frontend tidak timeout
+        res.status(200).json({
+            success: true,
+            message: "Berhasil Menghapus Acara!",
+            data: deleted,
         });
 
+        // Lanjut kirim pesan pembatalan di background (tidak menahan response)
         if (event.status === "terjadwal") {
             const users = await User.find({ _id: { $in: [...allUserIds] } });
 
@@ -539,7 +550,6 @@ exports.deleteEvent = async (req, res) => {
                     }
 
                     batch = [];
-
                     if (!isLast) {
                         console.log("Menunggu 2 menit sebelum batch selanjutnya...");
                         await new Promise(resolve => setTimeout(resolve, 120000));
@@ -547,39 +557,6 @@ exports.deleteEvent = async (req, res) => {
                 }
             }
         }
-
-        // Hapus semua Unavailability yang cocok (gunakan rentang waktu harian)
-        await Unavailability.deleteMany({
-            user_id: { $in: Array.from(userIds) },
-            $or: [
-                {
-                    date: {
-                        $gte: tanggalPrepare,
-                        $lt: new Date(tanggalPrepare.getTime() + 86400000), // +1 hari
-                    },
-                },
-                {
-                    date: {
-                        $gte: tanggalService,
-                        $lt: new Date(tanggalService.getTime() + 86400000), // +1 hari
-                    },
-                },
-            ],
-        });
-
-        await Attendance.deleteMany({ event_id: id });
-
-        await Monitoring.deleteMany({ event_id: id });
-
-        // Hapus event
-        const deleted = await Event.findByIdAndDelete(id);
-
-        return res.status(200).json({
-            success: true,
-            message: "Berhasil Menghapus Acara!",
-            data: deleted,
-        });
-
     } catch (error) {
         console.error("Error saat menghapus event:", error);
         return res.status(500).json({
