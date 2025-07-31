@@ -280,6 +280,24 @@ export default function AddEvent() {
             return;
         }
 
+        if (new Date(prepareStartTime) >= new Date(prepareEndTime)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Prepare Tidak Valid!!!',
+                text: 'Waktu mulai prepare harus sebelum waktu selesai prepare.',
+            });
+            return;
+        }
+
+        if (new Date(serviceStartTime) >= new Date(serviceEndTime)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Service Tidak Valid!!!',
+                text: 'Waktu mulai service harus sebelum waktu selesai service.',
+            });
+            return;
+        }
+
         if (new Date(prepareDate) > new Date(serviceDate)) {
             Swal.fire({
                 icon: 'error',
