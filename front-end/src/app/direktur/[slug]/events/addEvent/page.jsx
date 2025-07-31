@@ -331,7 +331,7 @@ export default function AddEvent() {
             Swal.fire({
                 icon: "error",
                 title: "Karyawan Gudang Tidak Boleh Kosong!!!",
-                text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
+                text: "Silakan pilih karyawan gudang untuk acara ini.",
             });
             return;
         }
@@ -341,7 +341,7 @@ export default function AddEvent() {
             Swal.fire({
                 icon: "error",
                 title: "Penanggung Jawab Dapur Tidak Boleh Kosong!!!",
-                text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
+                text: "Silakan pilih penanggung jawab untuk setiap menu dapur.",
             })
             return;
         }
@@ -378,20 +378,11 @@ export default function AddEvent() {
             return;
         }
 
-        if (!polygon) {
+        if (!polygon || polygon.length < 4) {
             Swal.fire({
                 icon: 'error',
                 title: 'Polygon Tidak Valid!!!',
                 text: 'Silakan polygon harus digambar terlebih dahulu.',
-            });
-            return;
-        }
-
-        if (polygon.length < 4) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Polygon Tidak Valid!!!',
-                text: 'Silakan gambar polygon dengan minimal 4 titik.',
             });
             return;
         }
