@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 import axios from 'axios'
 import Link from 'next/link'
 import { useParams, useRouter } from "next/navigation"
+import Swal from 'sweetalert2'
 
 
 const costumIcon = L.icon({
@@ -308,6 +309,26 @@ export default function UpdateEvent() {
             return;
         }
 
+        const parseTime = (time) => new Date(`1970-01-01T${time}:00`);
+
+        if (parseTime(prepareStartTime) >= parseTime(prepareEndTime)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Prepare Tidak Valid!!!',
+                text: 'Waktu mulai prepare harus sebelum waktu selesai prepare.',
+            });
+            return;
+        }
+
+        if (parseTime(serviceStartTime) >= parseTime(serviceEndTime)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Waktu Service Tidak Valid!!!',
+                text: 'Waktu mulai service harus sebelum waktu selesai service.',
+            });
+            return;
+        }
+
         if (new Date(prepareDate) > new Date(serviceDate)) {
             Swal.fire({
                 icon: 'error',
@@ -317,11 +338,11 @@ export default function UpdateEvent() {
             return;
         }
 
-        if (new Date(prepareDate).toDateString() === new Date().toDateString()) {
+        if (new Date(prepareDate).getTime() === new Date(serviceDate).getTime()) {
             Swal.fire({
                 icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid!!!',
-                text: 'Tanggal prepare sama dengan tanggal hari ini.',
+                title: 'Tanggal Prepare dan Service Tidak Boleh Sama!!!',
+                text: 'Silakan pilih tanggal prepare tidak boleh sama dengan tanggal service, harus h-1',
             });
             return;
         }
@@ -331,6 +352,35 @@ export default function UpdateEvent() {
                 icon: 'error',
                 title: 'Supervisor Tidak Boleh Kosong!!!',
                 text: 'Silakan pilih supervisor untuk acara ini.',
+            });
+            return;
+        }
+
+        if (selectedGudang.length === 0) {
+            Swal.fire({
+                icon: "error",
+                title: "Karyawan Gudang Tidak Boleh Kosong!!!",
+                text: "Silakan pilih karyawan gudang untuk acara ini.",
+            });
+            return;
+        }
+
+        // Validasi penanggung jawab dapur
+        if (dapurList.length === 0) {
+            Swal.fire({
+                icon: "error",
+                title: "Menu Dapur Tidak Boleh Kosong!!!",
+                text: "Silakan tambahkan minimal satu menu dapur.",
+            });
+            return;
+        }
+
+        const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
+        if (!hasPenanggungJawab) {
+            Swal.fire({
+                icon: "error",
+                title: "Penanggung Jawab Dapur Tidak Boleh Kosong!!!",
+                text: "Silakan pilih penanggung jawab untuk setiap menu dapur.",
             });
             return;
         }
@@ -345,43 +395,17 @@ export default function UpdateEvent() {
         const allKaryawanSet = new Set([...gudangIds, ...dapurIds, supervisorId]);
         const totalKaryawan = allKaryawanSet.size;
 
+
         if (totalKaryawan < 35 || totalKaryawan > 50) {
             Swal.fire({
                 icon: 'error',
                 title: 'Jumlah Karyawan Tidak Valid!!!',
-                text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus minimal 35 orang dan maksimal 50 orang.',
+                text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
             });
             return;
         }
 
-        if (new Date(prepareDate) > new Date(serviceDate)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid!!!',
-                text: 'Tanggal prepare harus sebelum tanggal service.',
-            });
-            return;
-        }
 
-        if (selectedGudang.length === 0) {
-            Swal.fire({
-                icon: "error",
-                title: "Karyawan Gudang Tidak Boleh Kosong!!!",
-                text: "Silakan pilih minimal satu karyawan gudang untuk acara ini.",
-            });
-            return;
-        }
-
-        // Validasi penanggung jawab dapur (jika diperlukan)
-        const hasPenanggungJawab = dapurList.every(menu => menu.penanggung_jawab.length > 0);
-        if (!hasPenanggungJawab) {
-            Swal.fire({
-                icon: "error",
-                title: "Penanggung Jawab Dapur Tidak Boleh Kosong!!!",
-                text: "Silakan pilih minimal satu penanggung jawab untuk setiap menu dapur.",
-            })
-            return;
-        }
 
         if (!selectedLocation) {
             Swal.fire({
@@ -392,12 +416,11 @@ export default function UpdateEvent() {
             return;
         }
 
-        // Validasi polygon
         if (!polygon || polygon.length < 4) {
             Swal.fire({
                 icon: 'error',
                 title: 'Polygon Tidak Valid!!!',
-                text: 'Silakan gambar polygon dengan minimal 4 titik.',
+                text: 'Silakan polygon harus digambar terlebih dahulu.',
             });
             return;
         }
