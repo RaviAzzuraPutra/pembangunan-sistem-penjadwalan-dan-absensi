@@ -432,17 +432,30 @@ export default function UpdateEvent() {
                 latitude: selectedLocation.lat,
                 longitude: selectedLocation.lng,
                 polygon: closedPolygon.map(p => [p.lat, p.lng]),
-            }
+            };
 
-            const gudangPayload = selectedGudang.map(item => {
-                const emp = karyawanData.find(e => e._id === item.userId)
-                const jdObj = emp.jobdesk.find(jd => jd.name === item.jobdesk && jd.category === 'gudang')
-                return {
-                    user_id: item.userId,
-                    jobdesk: [jdObj ? jdObj._id : null].filter(Boolean),
-                    tahap: ['prepare', 'service']
+            // Gabungkan jobdesk per user
+            const gudangMap = {};
+            selectedGudang.forEach(item => {
+                if (!gudangMap[item.userId]) {
+                    gudangMap[item.userId] = [];
                 }
-            })
+                gudangMap[item.userId].push(item.jobdesk);
+            });
+
+            const gudangPayload = Object.entries(gudangMap).map(([userId, jobdeskNames]) => {
+                const emp = karyawanData.find(e => e._id === userId);
+                // Ambil semua _id jobdesk yang sesuai nama dan kategori gudang
+                const jdIds = jobdeskNames.map(jdName => {
+                    const jdObj = emp.jobdesk.find(jd => jd.name === jdName && jd.category === 'gudang');
+                    return jdObj ? jdObj._id : null;
+                }).filter(Boolean);
+                return {
+                    user_id: userId,
+                    jobdesk: jdIds,
+                    tahap: ['prepare', 'service']
+                };
+            });
 
             const dapurPayload = dapurList.map(menu => ({
                 menu: menu.menu,
@@ -456,7 +469,6 @@ export default function UpdateEvent() {
                 }).filter(Boolean),
                 tahap: 'service'
             }));
-
 
             const body = {
                 name: namaAcara,
@@ -473,12 +485,12 @@ export default function UpdateEvent() {
                 location: locationPayload,
                 gudang: gudangPayload,
                 dapur: dapurPayload
-            }
+            };
 
             const response = await axios.put(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/update/${params.id}`,
                 body
-            )
+            );
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/events?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);
         } catch (error) {
@@ -489,7 +501,7 @@ export default function UpdateEvent() {
             } else {
                 console.log("REQUEST SETUP ERROR:", error.message);
             }
-            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Menambahkan Acara!";
+            const errorMessage = error.response?.data?.message || "Terjadi Kesalahan Saat Mengupdate Acara!";
             router.push(`/direktur/${slug}/events?success=false&message=${encodeURIComponent(errorMessage)}`);
         }
     }

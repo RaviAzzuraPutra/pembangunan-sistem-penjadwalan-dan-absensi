@@ -405,15 +405,28 @@ export default function AddEvent() {
                 polygon: closedPolygon.map(p => [p.lat, p.lng]),
             }
 
-            const gudangPayload = selectedGudang.map(item => {
-                const emp = karyawanData.find(e => e._id === item.userId)
-                const jdObj = emp.jobdesk.find(jd => jd.name === item.jobdesk && jd.category === 'gudang')
-                return {
-                    user_id: item.userId,
-                    jobdesk: [jdObj ? jdObj._id : null].filter(Boolean),
-                    tahap: ['prepare', 'service']
+            // Gabungkan jobdesk per user
+            const gudangMap = {};
+            selectedGudang.forEach(item => {
+                if (!gudangMap[item.userId]) {
+                    gudangMap[item.userId] = [];
                 }
-            })
+                gudangMap[item.userId].push(item.jobdesk);
+            });
+
+            const gudangPayload = Object.entries(gudangMap).map(([userId, jobdeskNames]) => {
+                const emp = karyawanData.find(e => e._id === userId);
+                // Ambil semua _id jobdesk yang sesuai nama dan kategori gudang
+                const jdIds = jobdeskNames.map(jdName => {
+                    const jdObj = emp.jobdesk.find(jd => jd.name === jdName && jd.category === 'gudang');
+                    return jdObj ? jdObj._id : null;
+                }).filter(Boolean);
+                return {
+                    user_id: userId,
+                    jobdesk: jdIds,
+                    tahap: ['prepare', 'service']
+                };
+            });
 
             const dapurPayload = dapurList.map(menu => ({
                 menu: menu.menu,
