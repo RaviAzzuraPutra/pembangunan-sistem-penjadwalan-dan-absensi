@@ -57,8 +57,18 @@ export default function Users() {
             sortable: true,
         },
         {
-            name: 'No Telepon',
-            selector: row => row.phone,
+            name: 'Jobdesk',
+            cell: row => (
+                <ol className="list-decimal pl-4">
+                    {row.jobdesk && row.jobdesk.length > 0 ? (
+                        row.jobdesk.map((jd, idx) => (
+                            <li key={jd._id || idx}>{jd.name}</li>
+                        ))
+                    ) : (
+                        <li>-</li>
+                    )}
+                </ol>
+            ),
         },
         {
             name: 'Supervisor',
