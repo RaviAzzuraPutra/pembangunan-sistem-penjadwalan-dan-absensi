@@ -82,8 +82,8 @@ export default function detailEvent() {
                     {detailEvent.supervisor?.confirmation || '-'}
                     )
                 </p>
-                <p><strong>Dibuat: </strong> {new Date(detailEvent.createdAt).toLocaleDateString()}</p>
-                <p><strong>Diperbarui: </strong>  {new Date(detailEvent.updatedAt).toLocaleDateString()}</p>
+                <p><strong>Dibuat: </strong> {new Date(detailEvent.createdAt).toLocaleDateString("id", "ID")}</p>
+                <p><strong>Diperbarui: </strong>  {new Date(detailEvent.updatedAt).toLocaleDateString("id", "ID")}</p>
 
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-5 mt-6'>
                     <div>
