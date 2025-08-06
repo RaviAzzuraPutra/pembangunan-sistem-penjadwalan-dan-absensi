@@ -396,14 +396,14 @@ export default function UpdateEvent() {
         const totalKaryawan = allKaryawanSet.size;
 
 
-        if (totalKaryawan < 35 || totalKaryawan > 50) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Jumlah Karyawan Tidak Valid!!!',
-                text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
-            });
-            return;
-        }
+        // if (totalKaryawan < 35 || totalKaryawan > 50) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Jumlah Karyawan Tidak Valid!!!',
+        //         text: 'Jumlah total karyawan (gudang, dapur, supervisor) harus antara 35 dan 50 orang.',
+        //     });
+        //     return;
+        // }
 
 
 
