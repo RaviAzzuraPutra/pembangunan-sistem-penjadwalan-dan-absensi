@@ -24,7 +24,8 @@ export default function AuthCheck() {
                     }
                 }
             } catch (error) {
-                router.replace("/login");
+                // Jangan langsung redirect, log saja dulu
+                console.error("Check Auth Failed:", error.response?.data || error.message);
             }
         };
 
