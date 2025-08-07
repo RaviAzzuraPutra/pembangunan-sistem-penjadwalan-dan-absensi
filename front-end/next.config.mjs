@@ -4,7 +4,7 @@ import withPWA from "next-pwa";
 const nextConfig = {
     reactStrictMode: true,
     eslint: {
-        ignoreDuringBuilds: true, // ✅ Matikan linting saat build production
+        ignoreDuringBuilds: true,
     },
     webpack: (config) => {
         config.resolve.fallback = { ...config.resolve.fallback, fs: false };
