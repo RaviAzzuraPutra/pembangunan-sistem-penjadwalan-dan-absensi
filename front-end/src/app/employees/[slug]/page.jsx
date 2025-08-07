@@ -38,10 +38,13 @@ export default function Employees() {
             });
             if (response.data.success) {
                 router.replace("/login");
+                // Paksa ganti halaman agar tidak bisa kembali dengan tombol back
+                window.location.replace("/login");
             }
         } catch (error) {
             console.log("Logout failed:", error);
             router.replace("/login");
+            window.location.replace("/login");
         }
     }
 

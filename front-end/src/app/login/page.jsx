@@ -1,16 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import AuthCheck from "../../utils/authCheck";
+import { getUserSession } from "../../utils/getSession";
 
 export default function LoginPage() {
     const [IDlogin, setIDlogin] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const router = useRouter();
+
+    // Cek session saat halaman login dibuka
+    useEffect(() => {
+        const checkSession = async () => {
+            const user = await getUserSession();
+            if (user) {
+                if (user.role === "direktur") {
+                    router.replace(`/direktur/${user.slug}`);
+                } else if (user.role === "karyawan") {
+                    router.replace(`/employees/${user.slug}`);
+                }
+            }
+        };
+        checkSession();
+    }, [router]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
