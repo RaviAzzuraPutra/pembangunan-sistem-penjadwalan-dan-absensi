@@ -26,12 +26,17 @@ exports.login = async (req, res) => {
             , process.env.JWT_SECRET,
             { expiresIn: "8h" });
 
+        // Deteksi iOS/Safari dari user-agent
+        const ua = req.headers['user-agent'] || "";
+        const isIOS = /iP(hone|ad|od)/.test(ua);
+        const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+        const sameSiteOption = (isIOS || isSafari) ? "lax" : "none";
         res.cookie("token", token, {
             httpOnly: true,
             secure: true,
-            sameSite: "lax",
+            sameSite: sameSiteOption,
             maxAge: 8 * 60 * 60 * 1000
-        })
+        });
 
         return res.status(200).json({
             success: true,
@@ -69,10 +74,15 @@ exports.logout = async (req, res) => {
             })
         }
 
+        // Deteksi iOS/Safari dari user-agent
+        const ua = req.headers['user-agent'] || "";
+        const isIOS = /iP(hone|ad|od)/.test(ua);
+        const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+        const sameSiteOption = (isIOS || isSafari) ? "lax" : "none";
         res.clearCookie("token", {
             httpOnly: true,
             secure: true,
-            sameSite: "none",
+            sameSite: sameSiteOption,
         });
 
         return res.status(200).json({
