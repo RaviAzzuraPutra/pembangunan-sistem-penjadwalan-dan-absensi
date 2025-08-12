@@ -342,8 +342,40 @@ exports.updateEvent = async (req, res) => {
             });
         }
 
+
         // Simpan hasil bersih
         await updatedEvent.save();
+
+        // Tambahkan Unavailability untuk user yang "tidak bisa" dan dihapus dari event
+        const unavailOps = [];
+        removedUserIds.forEach(userId => {
+            // Cek apakah user ini dihapus dari gudang (tanggal prepare) atau dapur (tanggal service)
+            const isGudang = oldEvent.gudang.some(g => g.user_id.toString() === userId && (g?.confirmation === 'tidak bisa' || g?.confirmation?.status === 'tidak bisa'));
+            const isDapur = oldEvent.dapur.some(d =>
+                d.penanggung_jawab.some(pj => pj.user_id.toString() === userId && (pj?.confirmation === 'tidak bisa' || pj?.confirmation?.status === 'tidak bisa'))
+            );
+            if (isGudang) {
+                unavailOps.push({
+                    updateOne: {
+                        filter: { user_id: userId, date: oldEvent.date_prepare },
+                        update: { user_id: userId, date: oldEvent.date_prepare },
+                        upsert: true,
+                    }
+                });
+            }
+            if (isDapur) {
+                unavailOps.push({
+                    updateOne: {
+                        filter: { user_id: userId, date: oldEvent.date_service },
+                        update: { user_id: userId, date: oldEvent.date_service },
+                        upsert: true,
+                    }
+                });
+            }
+        });
+        if (unavailOps.length) {
+            await Unavailability.bulkWrite(unavailOps);
+        }
 
         const uniqueOldUserIds = [...new Set(oldUserIds)];
         const uniqueNewUserIds = [...new Set(newUserIds)];
