@@ -39,10 +39,15 @@ export default function UpdateUser() {
             try {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/${id}`);
                 const user = response.data.data;
+                // Tampilkan phone dengan awalan 0 jika dari backend 62
+                let phoneDisplay = user.phone;
+                if (phoneDisplay.startsWith("62")) {
+                    phoneDisplay = "0" + phoneDisplay.slice(2);
+                }
                 setFormData({
                     name: user.name,
                     password: "",
-                    phone: user.phone,
+                    phone: phoneDisplay,
                     is_supervisor_candidate: user.is_supervisor_candidate,
                     role: "karyawan",
                 });
@@ -104,6 +109,11 @@ export default function UpdateUser() {
             return;
         }
 
+        // Validasi: boleh input 0... atau 62..., tapi kirim ke backend selalu 62...
+        let phoneToSend = formData.phone;
+        if (phoneToSend.startsWith("0")) {
+            phoneToSend = "62" + phoneToSend.slice(1);
+        }
         const phoneRegex = /^(?:\+62|62|0)8[1-9][0-9]{6,11}$/;
         if (!phoneRegex.test(formData.phone)) {
             Swal.fire({ icon: 'error', title: 'Nomor Telepon Tidak Valid!!!', text: "Nomor telepon harus diawali dengan 62, dan diikuti oleh 8 digit angka." });
@@ -111,7 +121,7 @@ export default function UpdateUser() {
         }
 
         try {
-            const payload = { ...formData, jobdesk: selectedJobdesk };
+            const payload = { ...formData, phone: phoneToSend, jobdesk: selectedJobdesk };
             const response = await axios.put(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/update-direktur/${id}`, payload);
             const successStatus = response.data.success ? 'true' : 'false';
             router.push(`/direktur/${slug}/users?success=${successStatus}&message=${encodeURIComponent(response.data.message)}`);

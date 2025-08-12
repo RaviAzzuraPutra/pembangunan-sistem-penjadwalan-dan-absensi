@@ -273,79 +273,79 @@ export default function UpdateEvent() {
             return;
         }
 
-        if (!prepareDate) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Tanggal Prepare Tidak Boleh Kosong!!!',
-                text: 'Silakan pilih tanggal prepare untuk acara ini.',
-            });
-            return;
-        }
+        // if (!prepareDate) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Tanggal Prepare Tidak Boleh Kosong!!!',
+        //         text: 'Silakan pilih tanggal prepare untuk acara ini.',
+        //     });
+        //     return;
+        // }
 
-        if (!serviceDate) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Tanggal Service Tidak Boleh Kosong!!!',
-                text: 'Silakan pilih tanggal service untuk acara ini.',
-            });
-            return;
-        }
+        // if (!serviceDate) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Tanggal Service Tidak Boleh Kosong!!!',
+        //         text: 'Silakan pilih tanggal service untuk acara ini.',
+        //     });
+        //     return;
+        // }
 
-        if (!prepareStartTime || !prepareEndTime) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Waktu Prepare Tidak Boleh Kosong!!!',
-                text: 'Silakan pilih waktu mulai dan selesai prepare.',
-            });
-            return;
-        }
+        // if (!prepareStartTime || !prepareEndTime) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Waktu Prepare Tidak Boleh Kosong!!!',
+        //         text: 'Silakan pilih waktu mulai dan selesai prepare.',
+        //     });
+        //     return;
+        // }
 
-        if (!serviceStartTime || !serviceEndTime) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Waktu Service Tidak Boleh Kosong!!!',
-                text: 'Silakan pilih waktu mulai dan selesai service.',
-            });
-            return;
-        }
+        // if (!serviceStartTime || !serviceEndTime) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Waktu Service Tidak Boleh Kosong!!!',
+        //         text: 'Silakan pilih waktu mulai dan selesai service.',
+        //     });
+        //     return;
+        // }
 
-        const parseTime = (time) => new Date(`1970-01-01T${time}:00`);
+        // const parseTime = (time) => new Date(`1970-01-01T${time}:00`);
 
-        if (parseTime(prepareStartTime) >= parseTime(prepareEndTime)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Waktu Prepare Tidak Valid!!!',
-                text: 'Waktu mulai prepare harus sebelum waktu selesai prepare.',
-            });
-            return;
-        }
+        // if (parseTime(prepareStartTime) >= parseTime(prepareEndTime)) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Waktu Prepare Tidak Valid!!!',
+        //         text: 'Waktu mulai prepare harus sebelum waktu selesai prepare.',
+        //     });
+        //     return;
+        // }
 
-        if (parseTime(serviceStartTime) >= parseTime(serviceEndTime)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Waktu Service Tidak Valid!!!',
-                text: 'Waktu mulai service harus sebelum waktu selesai service.',
-            });
-            return;
-        }
+        // if (parseTime(serviceStartTime) >= parseTime(serviceEndTime)) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Waktu Service Tidak Valid!!!',
+        //         text: 'Waktu mulai service harus sebelum waktu selesai service.',
+        //     });
+        //     return;
+        // }
 
-        if (new Date(prepareDate) > new Date(serviceDate)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Tanggal Prepare Tidak Valid!!!',
-                text: 'Tanggal prepare harus sebelum tanggal service.',
-            });
-            return;
-        }
+        // if (new Date(prepareDate) > new Date(serviceDate)) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Tanggal Prepare Tidak Valid!!!',
+        //         text: 'Tanggal prepare harus sebelum tanggal service.',
+        //     });
+        //     return;
+        // }
 
-        if (new Date(prepareDate).getTime() === new Date(serviceDate).getTime()) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Tanggal Prepare dan Service Tidak Boleh Sama!!!',
-                text: 'Silakan pilih tanggal prepare tidak boleh sama dengan tanggal service, harus h-1',
-            });
-            return;
-        }
+        // if (new Date(prepareDate).getTime() === new Date(serviceDate).getTime()) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Tanggal Prepare dan Service Tidak Boleh Sama!!!',
+        //         text: 'Silakan pilih tanggal prepare tidak boleh sama dengan tanggal service, harus h-1',
+        //     });
+        //     return;
+        // }
 
         if (!selectedSupervisor) {
             Swal.fire({
