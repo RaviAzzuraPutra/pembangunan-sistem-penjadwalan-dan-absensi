@@ -773,12 +773,13 @@ exports.getAvailableEmployees = async (req, res) => {
             ? await Unavailability.find({ date: new Date(date_service) }).distinct("user_id")
             : [];
 
-        const fullyUnavailable = unavailPrepare.filter(id =>
-            unavailService.includes(id.toString())
-        );
+        // Gabungkan semua user yang unavailable di salah satu tanggal (union)
+        const allUnavailable = Array.from(new Set([
+            ...unavailPrepare.map(id => id.toString()),
+            ...unavailService.map(id => id.toString())
+        ]));
 
-        // Blokir hanya user yang tidak bisa hadir di kedua tanggal
-        fullyUnavailable.forEach(id => blocked.add(id.toString()));
+        allUnavailable.forEach(id => blocked.add(id));
 
 
         // Ambil semua karyawan yang tidak diblok
