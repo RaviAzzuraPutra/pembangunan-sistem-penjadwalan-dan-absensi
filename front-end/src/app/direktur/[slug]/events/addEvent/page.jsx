@@ -486,11 +486,13 @@ export default function AddEvent() {
         )
     ));
 
-    const filteredGudangData = karyawanData.filter(emp =>
-        emp.jobdesk.some(jd => jd.category === 'gudang') &&
-        emp._id !== selectedSupervisorId &&
-        emp.name.toLowerCase().includes(searchGudang.toLowerCase())
-    );
+    const filteredGudangData = karyawanData.filter(emp => {
+        // Filter: tidak tampilkan yang sudah pernah konfirmasi 'tidak bisa' (jika properti ada)
+        if (emp.confirmation === 'tidak bisa') return false;
+        return emp.jobdesk.some(jd => jd.category === 'gudang') &&
+            emp._id !== selectedSupervisorId &&
+            emp.name.toLowerCase().includes(searchGudang.toLowerCase());
+    });
 
     const isDapurKaryawanDisabled = (karyawan, currentStanIndex) => {
         const selectedId = karyawan._id;
@@ -564,7 +566,7 @@ export default function AddEvent() {
                     <select className="w-full border px-3 py-2 rounded" value={selectedSupervisor} onChange={handleSupervisorChange}>
                         <option value="">-- Pilih Supervisor --</option>
                         {karyawanData
-                            .filter(emp => emp.is_supervisor_candidate)
+                            .filter(emp => emp.is_supervisor_candidate && emp.confirmation !== 'tidak bisa')
                             .map(emp => (
                                 <option key={emp._id} value={emp.name}>{emp.name}</option>
                             ))}

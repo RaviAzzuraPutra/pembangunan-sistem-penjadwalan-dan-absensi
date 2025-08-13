@@ -346,35 +346,34 @@ exports.updateEvent = async (req, res) => {
         // Simpan hasil bersih
         await updatedEvent.save();
 
-        // Tambahkan Unavailability untuk user yang "tidak bisa" dan dihapus dari event
-        const unavailOps = [];
-        removedUserIds.forEach(userId => {
-            // Cek apakah user ini dihapus dari gudang (tanggal prepare) atau dapur (tanggal service)
-            const isGudang = oldEvent.gudang.some(g => g.user_id.toString() === userId && (g?.confirmation === 'tidak bisa' || g?.confirmation?.status === 'tidak bisa'));
-            const isDapur = oldEvent.dapur.some(d =>
-                d.penanggung_jawab.some(pj => pj.user_id.toString() === userId && (pj?.confirmation === 'tidak bisa' || pj?.confirmation?.status === 'tidak bisa'))
-            );
-            if (isGudang) {
-                unavailOps.push({
+        // Tambahkan/pertahankan Unavailability untuk semua user gudang (tanggal prepare) dan dapur (tanggal service), tanpa pengecualian status konfirmasi
+        const ops = [];
+        if (Array.isArray(updatedEvent.gudang)) {
+            updatedEvent.gudang.forEach(g => {
+                ops.push({
                     updateOne: {
-                        filter: { user_id: userId, date: oldEvent.date_prepare },
-                        update: { user_id: userId, date: oldEvent.date_prepare },
+                        filter: { user_id: g.user_id, date: updatedEvent.date_prepare },
+                        update: { user_id: g.user_id, date: updatedEvent.date_prepare },
                         upsert: true,
                     }
                 });
-            }
-            if (isDapur) {
-                unavailOps.push({
-                    updateOne: {
-                        filter: { user_id: userId, date: oldEvent.date_service },
-                        update: { user_id: userId, date: oldEvent.date_service },
-                        upsert: true,
-                    }
+            });
+        }
+        if (Array.isArray(updatedEvent.dapur)) {
+            updatedEvent.dapur.forEach(d => {
+                d.penanggung_jawab.forEach(pj => {
+                    ops.push({
+                        updateOne: {
+                            filter: { user_id: pj.user_id, date: updatedEvent.date_service },
+                            update: { user_id: pj.user_id, date: updatedEvent.date_service },
+                            upsert: true,
+                        }
+                    });
                 });
-            }
-        });
-        if (unavailOps.length) {
-            await Unavailability.bulkWrite(unavailOps);
+            });
+        }
+        if (ops.length) {
+            await Unavailability.bulkWrite(ops);
         }
 
         const uniqueOldUserIds = [...new Set(oldUserIds)];
@@ -522,7 +521,6 @@ exports.deleteEvent = async (req, res) => {
         const tanggalPrepare = normalizeDate(new Date(event.date_prepare));
         const tanggalService = normalizeDate(new Date(event.date_service));
 
-        const userIds = new Set();
         const allUserIds = new Set();
 
         if (event.supervisor?.id?._id) {
@@ -534,7 +532,7 @@ exports.deleteEvent = async (req, res) => {
 
         // Hapus semua data terkait dulu
         await Unavailability.deleteMany({
-            user_id: { $in: Array.from(userIds) },
+            user_id: { $in: Array.from(allUserIds) },
             $or: [
                 { date: { $gte: tanggalPrepare, $lt: new Date(tanggalPrepare.getTime() + 86400000) } },
                 { date: { $gte: tanggalService, $lt: new Date(tanggalService.getTime() + 86400000) } },

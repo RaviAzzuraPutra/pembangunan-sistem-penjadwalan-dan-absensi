@@ -526,6 +526,9 @@ export default function UpdateEvent() {
         const konfirmasiGudang = gudangEventData?.confirmation;
         if (konfirmasiGudang === 'tidak bisa') return false;
 
+        // Filter: tidak tampilkan yang sudah pernah konfirmasi 'tidak bisa' (jika properti ada di emp)
+        if (emp.confirmation === 'tidak bisa') return false;
+
         return emp.jobdesk.some(jd => jd.category === 'gudang') &&
             emp._id !== selectedSupervisorId &&
             emp.name.toLowerCase().includes(searchGudang.toLowerCase());
@@ -612,8 +615,8 @@ export default function UpdateEvent() {
                                 const isSupervisorLama = emp._id === event?.supervisor?.id?._id;
                                 const konfirmasiSupervisor = event?.supervisor?.confirmation;
                                 if (isSupervisorLama && konfirmasiSupervisor === 'tidak bisa') return false;
-                                // Tampilkan hanya kandidat supervisor
-                                return emp.is_supervisor_candidate;
+                                // Tampilkan hanya kandidat supervisor yang belum pernah konfirmasi tidak bisa
+                                return emp.is_supervisor_candidate && emp.confirmation !== 'tidak bisa';
                             })
                             .map(emp => (
                                 <option key={emp._id} value={emp.name}>
