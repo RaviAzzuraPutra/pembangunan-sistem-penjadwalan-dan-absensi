@@ -253,34 +253,42 @@ exports.updateEvent = async (req, res) => {
             });
         }
 
-        // Pertahankan konfirmasi penanggung jawab dapur
-        if (Array.isArray(updatedEvent.dapur)) {
-            updatedEvent.dapur = updatedEvent.dapur.map(d => {
-                const lama = oldEvent.dapur.find(e => e.menu === d.menu);
-                const newPenanggungJawab = d.penanggung_jawab.map(pj => {
-                    const lamaPJ = lama?.penanggung_jawab?.find(e => e.user_id.toString() === pj.user_id.toString());
-                    return {
-                        ...pj,
-                        confirmation: lamaPJ?.confirmation ?? pj.confirmation ?? null
-                    };
-                });
-                return {
-                    ...d,
-                    penanggung_jawab: newPenanggungJawab
-                };
+        // Kumpulkan user id lama dan baru untuk supervisor, gudang, dapur
+        const oldUserIds = [
+            oldEvent.supervisor?.id?.toString(),
+            ...oldEvent.gudang.map(g => g.user_id.toString()),
+            ...oldEvent.dapur.flatMap(d => d.penanggung_jawab.map(pj => pj.user_id.toString()))
+        ].filter(Boolean);
+        const newUserIds = [
+            updatedEvent.supervisor?.id?.toString(),
+            ...updatedEvent.gudang.map(g => g.user_id.toString()),
+            ...updatedEvent.dapur.flatMap(d => d.penanggung_jawab.map(pj => pj.user_id.toString()))
+        ].filter(Boolean);
+        const removedUserIds = oldUserIds.filter(id => !newUserIds.includes(id));
+
+        const ops = [];
+
+        // 1️⃣ Pertahankan semua yang "tidak bisa" dari event lama
+        if (oldEvent.supervisor?.id && oldEvent.supervisor.confirmation === 'tidak bisa') {
+            ops.push({
+                updateOne: {
+                    filter: { user_id: oldEvent.supervisor.id, date: updatedEvent.date_prepare },
+                    update: { user_id: oldEvent.supervisor.id, date: updatedEvent.date_prepare },
+                    upsert: true,
+                }
             });
         }
 
-
-        const oldUserIds = [];
-        const removedUserIds = [];
-
         if (Array.isArray(oldEvent.gudang)) {
             oldEvent.gudang.forEach(g => {
-                if (g?.confirmation?.status === 'tidak bisa') {
-                    removedUserIds.push(g.user_id.toString());
-                } else {
-                    oldUserIds.push(g.user_id.toString());
+                if (g.confirmation === 'tidak bisa') {
+                    ops.push({
+                        updateOne: {
+                            filter: { user_id: g.user_id, date: updatedEvent.date_prepare },
+                            update: { user_id: g.user_id, date: updatedEvent.date_prepare },
+                            upsert: true,
+                        }
+                    });
                 }
             });
         }
@@ -289,66 +297,55 @@ exports.updateEvent = async (req, res) => {
             oldEvent.dapur.forEach(d => {
                 if (Array.isArray(d.penanggung_jawab)) {
                     d.penanggung_jawab.forEach(pj => {
-                        if (pj?.confirmation?.status === 'tidak bisa') {
-                            removedUserIds.push(pj.user_id.toString());
-                        } else {
-                            oldUserIds.push(pj.user_id.toString());
+                        if (pj.confirmation === 'tidak bisa') {
+                            ops.push({
+                                updateOne: {
+                                    filter: { user_id: pj.user_id, date: updatedEvent.date_service },
+                                    update: { user_id: pj.user_id, date: updatedEvent.date_service },
+                                    upsert: true,
+                                }
+                            });
                         }
                     });
                 }
             });
         }
-
-        const newUserIds = [];
+        // Semua user gudang baru (jika ada perubahan)
         if (Array.isArray(updatedEvent.gudang)) {
             updatedEvent.gudang.forEach(g => {
-                if (g?.confirmation?.status !== 'tidak bisa') {
-                    newUserIds.push(g.user_id.toString());
-                }
+                ops.push({
+                    updateOne: {
+                        filter: { user_id: g.user_id, date: updatedEvent.date_prepare },
+                        update: { user_id: g.user_id, date: updatedEvent.date_prepare },
+                        upsert: true,
+                    }
+                });
             });
         }
-
+        // Semua user dapur baru (jika ada perubahan)
         if (Array.isArray(updatedEvent.dapur)) {
             updatedEvent.dapur.forEach(d => {
-                if (Array.isArray(d.penanggung_jawab)) {
-                    d.penanggung_jawab.forEach(pj => {
-                        if (pj?.confirmation?.status !== 'tidak bisa') {
-                            newUserIds.push(pj.user_id.toString());
+                d.penanggung_jawab.forEach(pj => {
+                    ops.push({
+                        updateOne: {
+                            filter: { user_id: pj.user_id, date: updatedEvent.date_service },
+                            update: { user_id: pj.user_id, date: updatedEvent.date_service },
+                            upsert: true,
                         }
                     });
-                }
+                });
             });
         }
-
-        // Hapus gudang yang "tidak bisa" dan user_id-nya tidak ada di data yang baru
-        if (Array.isArray(updatedEvent.gudang)) {
-            updatedEvent.gudang = updatedEvent.gudang.filter(g => {
-                const userId = g.user_id.toString();
-                const isDiganti = removedUserIds.includes(userId) && !newUserIds.includes(userId);
-                return !(g?.confirmation?.status === 'tidak bisa' && isDiganti);
-            });
+        if (ops.length) {
+            await Unavailability.bulkWrite(ops);
         }
-
-        // Hapus penanggung jawab dapur yang "tidak bisa" dan user_id-nya diganti
-        if (Array.isArray(updatedEvent.dapur)) {
-            updatedEvent.dapur.forEach(d => {
-                if (Array.isArray(d.penanggung_jawab)) {
-                    d.penanggung_jawab = d.penanggung_jawab.filter(pj => {
-                        const userId = pj.user_id.toString();
-                        const isDiganti = removedUserIds.includes(userId) && !newUserIds.includes(userId);
-                        return !(pj?.confirmation?.status === 'tidak bisa' && isDiganti);
-                    });
-                }
-            });
-        }
+        // JANGAN hapus penanggung jawab dapur yang sudah konfirmasi 'tidak bisa' walaupun user_id-nya diganti
+        // Data Unavailability tetap dipertahankan sesuai permintaan logic
+        // Tidak perlu filter penanggung jawab dapur berdasarkan status 'tidak bisa' dan penggantian
 
 
         // Simpan hasil bersih
         await updatedEvent.save();
-
-        // Tambahkan/pertahankan Unavailability untuk semua user gudang (tanggal prepare), dapur (tanggal service),
-        // dan supervisor lama yang konfirmasi 'tidak bisa' (tanggal prepare)
-        const ops = [];
         if (Array.isArray(updatedEvent.gudang)) {
             updatedEvent.gudang.forEach(g => {
                 ops.push({
@@ -371,20 +368,6 @@ exports.updateEvent = async (req, res) => {
                         }
                     });
                 });
-            });
-        }
-        // Supervisor lama yang konfirmasi 'tidak bisa' tetap di-unavailable-kan di tanggal prepare
-        if (
-            oldEvent.supervisor &&
-            oldEvent.supervisor.id &&
-            oldEvent.supervisor.confirmation === 'tidak bisa'
-        ) {
-            ops.push({
-                updateOne: {
-                    filter: { user_id: oldEvent.supervisor.id, date: updatedEvent.date_prepare },
-                    update: { user_id: oldEvent.supervisor.id, date: updatedEvent.date_prepare },
-                    upsert: true,
-                }
             });
         }
 
@@ -466,9 +449,6 @@ exports.updateEvent = async (req, res) => {
         const oldDapurIds = oldEvent.dapur.flatMap(d => d.penanggung_jawab.map(p => p.user_id.toString())).sort().join(',');
         const newDapurIds = updatedEvent.dapur.flatMap(d => d.penanggung_jawab.map(p => p.user_id.toString())).sort().join(',');
         const isDaftarDapurBerubah = oldDapurIds !== newDapurIds;
-
-
-
 
         const hanyaTanggalJamLokasiYangBerubah = (
             (isTanggalBerubah || isJamBerubah || isLokasiBerubah) &&
