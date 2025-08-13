@@ -346,7 +346,8 @@ exports.updateEvent = async (req, res) => {
         // Simpan hasil bersih
         await updatedEvent.save();
 
-        // Tambahkan/pertahankan Unavailability untuk semua user gudang (tanggal prepare) dan dapur (tanggal service), tanpa pengecualian status konfirmasi
+        // Tambahkan/pertahankan Unavailability untuk semua user gudang (tanggal prepare), dapur (tanggal service),
+        // dan supervisor lama yang konfirmasi 'tidak bisa' (tanggal prepare)
         const ops = [];
         if (Array.isArray(updatedEvent.gudang)) {
             updatedEvent.gudang.forEach(g => {
@@ -370,6 +371,47 @@ exports.updateEvent = async (req, res) => {
                         }
                     });
                 });
+            });
+        }
+        // Supervisor lama yang konfirmasi 'tidak bisa' tetap di-unavailable-kan di tanggal prepare
+        if (
+            oldEvent.supervisor &&
+            oldEvent.supervisor.id &&
+            oldEvent.supervisor.confirmation === 'tidak bisa'
+        ) {
+            ops.push({
+                updateOne: {
+                    filter: { user_id: oldEvent.supervisor.id, date: updatedEvent.date_prepare },
+                    update: { user_id: oldEvent.supervisor.id, date: updatedEvent.date_prepare },
+                    upsert: true,
+                }
+            });
+        }
+
+        // Penanggung jawab dapur lama yang konfirmasi 'tidak bisa' dan sudah tidak ada di dapur baru tetap di-unavailable-kan di tanggal service
+        if (Array.isArray(oldEvent.dapur)) {
+            oldEvent.dapur.forEach((oldDapur) => {
+                if (Array.isArray(oldDapur.penanggung_jawab)) {
+                    oldDapur.penanggung_jawab.forEach((oldPj) => {
+                        // Sudah konfirmasi tidak bisa
+                        if (oldPj?.confirmation === 'tidak bisa') {
+                            // Apakah user ini sudah tidak ada di dapur baru?
+                            const masihAda = Array.isArray(updatedEvent.dapur) && updatedEvent.dapur.some(newDapur =>
+                                Array.isArray(newDapur.penanggung_jawab) &&
+                                newDapur.penanggung_jawab.some(newPj => newPj.user_id.toString() === oldPj.user_id.toString())
+                            );
+                            if (!masihAda) {
+                                ops.push({
+                                    updateOne: {
+                                        filter: { user_id: oldPj.user_id, date: updatedEvent.date_service },
+                                        update: { user_id: oldPj.user_id, date: updatedEvent.date_service },
+                                        upsert: true,
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
             });
         }
         if (ops.length) {
