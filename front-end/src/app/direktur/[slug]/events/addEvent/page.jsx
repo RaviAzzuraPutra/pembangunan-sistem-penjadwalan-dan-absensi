@@ -244,6 +244,20 @@ export default function AddEvent() {
             return;
         }
 
+        // const today = new Date();
+        // const minPrepareDate = new Date(today);
+        // minPrepareDate.setDate(today.getDate() + 7);
+        // minPrepareDate.setHours(0, 0, 0, 0);
+
+        // if (new Date(prepareDate) < minPrepareDate) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Penjadwalan Terlambat!!!',
+        //         text: 'Penjadwalan harus dilakukan minimal 7 hari sebelum tanggal prepare.',
+        //     });
+        //     return;
+        // }
+
         // if (!prepareDate) {
         //     Swal.fire({
         //         icon: 'error',

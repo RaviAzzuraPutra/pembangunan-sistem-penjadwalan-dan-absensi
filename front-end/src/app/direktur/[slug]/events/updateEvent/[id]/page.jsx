@@ -140,7 +140,12 @@ export default function UpdateEvent() {
     useEffect(() => {
         const fetchAllKaryawan = async () => {
             try {
-                const res = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/event/available-employees`);
+                // Ambil karyawan yang available di tanggal prepare dan service
+                const params = [];
+                if (prepareDate) params.push(`date_prepare=${prepareDate}`);
+                if (serviceDate) params.push(`date_service=${serviceDate}`);
+                const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/available-employees${params.length ? '?' + params.join('&') : ''}`;
+                const res = await axios.get(url);
                 if (res.data.success) {
                     setAllKaryawan(res.data.data);
                     setKaryawanData(res.data.data);
@@ -149,8 +154,11 @@ export default function UpdateEvent() {
                 console.log('Gagal fetch semua karyawan:', err);
             }
         };
-        fetchAllKaryawan();
-    }, []);
+        // Hanya fetch jika tanggal sudah ada
+        if (prepareDate && serviceDate) {
+            fetchAllKaryawan();
+        }
+    }, [prepareDate, serviceDate]);
 
     const handleGudangToggle = (userId, jobdesk) => {
         setSelectedGudang(prev => {
@@ -272,6 +280,20 @@ export default function UpdateEvent() {
             });
             return;
         }
+
+        // const today = new Date();
+        // const minPrepareDate = new Date(today);
+        // minPrepareDate.setDate(today.getDate() + 7);
+        // minPrepareDate.setHours(0, 0, 0, 0);
+
+        // if (new Date(prepareDate) < minPrepareDate) {
+        //     Swal.fire({
+        //         icon: 'error',
+        //         title: 'Penjadwalan Terlambat!!!',
+        //         text: 'Penjadwalan harus dilakukan minimal 7 hari sebelum tanggal prepare.',
+        //     });
+        //     return;
+        // }
 
         // if (!prepareDate) {
         //     Swal.fire({
@@ -516,29 +538,21 @@ export default function UpdateEvent() {
         )
     ));
 
+    // Filter gudang: hanya tampilkan yang available (sudah difilter backend), dan bukan supervisor terpilih
     const filteredGudangData = karyawanData.filter(emp => {
-        // Cek apakah dia supervisor lama yang tidak bisa
-        const isSupervisorLama = emp._id === event?.supervisor?.id?._id;
-        const konfirmasiSupervisor = event?.supervisor?.confirmation;
-        if (isSupervisorLama && konfirmasiSupervisor === 'tidak bisa') return false;
-
-        const gudangEventData = event?.gudang.find(g => g.user_id._id === emp._id);
-        const konfirmasiGudang = gudangEventData?.confirmation;
-        if (konfirmasiGudang === 'tidak bisa') return false;
-
-        // Filter: tidak tampilkan yang sudah pernah konfirmasi 'tidak bisa' (jika properti ada di emp)
-        if (emp.confirmation === 'tidak bisa') return false;
-
+        // Cek status konfirmasi dari event.gudang
+        const gudangEvent = event?.gudang?.find(g => g.user_id._id === emp._id);
+        const konfirmasi = gudangEvent?.confirmation || 'menunggu';
         return emp.jobdesk.some(jd => jd.category === 'gudang') &&
             emp._id !== selectedSupervisorId &&
-            emp.name.toLowerCase().includes(searchGudang.toLowerCase());
+            emp.name.toLowerCase().includes(searchGudang.toLowerCase()) &&
+            konfirmasi !== 'tidak bisa';
     });
 
+    // Dapur: hanya tampilkan yang available (sudah difilter backend)
     const isDapurKaryawanDisabled = (karyawan, currentStanIndex) => {
         const selectedId = karyawan._id;
-
         let alasan = null;
-
         // Cek apakah sudah dipilih di stan lain
         for (let i = 0; i < dapurList.length; i++) {
             if (i !== currentStanIndex) {
@@ -552,7 +566,6 @@ export default function UpdateEvent() {
                 }
             }
         }
-
         // Cek jika sudah 2 orang di stan ini
         if (
             dapurList[currentStanIndex].penanggung_jawab.length >= 2 &&
@@ -560,7 +573,6 @@ export default function UpdateEvent() {
         ) {
             return { disabled: true, reason: `maksimal 2 orang` };
         }
-
         return { disabled: false };
     };
 
@@ -606,23 +618,23 @@ export default function UpdateEvent() {
                         className="w-full border px-3 py-2 rounded"
                         value={selectedSupervisor}
                         onChange={handleSupervisorChange}
-                        // Supervisor hanya tidak bisa diganti jika sudah konfirmasi "bisa"
-                        disabled={event?.supervisor?.confirmation === 'bisa'}
                     >
                         <option value="">-- Silakan pilih supervisor --</option>
                         {karyawanData
-                            .filter(emp => {
-                                const isSupervisorLama = emp._id === event?.supervisor?.id?._id;
-                                const konfirmasiSupervisor = event?.supervisor?.confirmation;
-                                if (isSupervisorLama && konfirmasiSupervisor === 'tidak bisa') return false;
-                                // Tampilkan hanya kandidat supervisor yang belum pernah konfirmasi tidak bisa
-                                return emp.is_supervisor_candidate && emp.confirmation !== 'tidak bisa';
-                            })
-                            .map(emp => (
-                                <option key={emp._id} value={emp.name}>
-                                    {emp.name}
-                                </option>
-                            ))}
+                            .filter(emp => emp.is_supervisor_candidate)
+                            .map(emp => {
+                                // Ambil status konfirmasi supervisor dari event jika ada
+                                let konfirmasi = 'menunggu';
+                                if (event?.supervisor?.id?._id === emp._id) {
+                                    konfirmasi = event.supervisor.confirmation;
+                                }
+                                if (konfirmasi === 'tidak bisa') return null;
+                                return (
+                                    <option key={emp._id} value={emp.name} disabled={konfirmasi === 'bisa'}>
+                                        {emp.name} {konfirmasi === 'bisa' ? '(Sudah Konfirmasi Bisa)' : ''}
+                                    </option>
+                                );
+                            })}
                     </select>
                 </div>
 
@@ -644,15 +656,13 @@ export default function UpdateEvent() {
                                     {filteredGudangData
                                         .filter(emp => emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang'))
                                         .map(emp => {
-                                            const konfirmasi = event?.gudang.find(g =>
+                                            const gudangEvent = event?.gudang.find(g =>
                                                 g.user_id._id === emp._id &&
                                                 g.jobdesk.some(j => j.name === jdName)
-                                            )?.confirmation;
-
+                                            );
+                                            const konfirmasi = gudangEvent?.confirmation || 'menunggu';
                                             if (konfirmasi === 'tidak bisa') return null;
-
                                             const isChecked = selectedGudang.some(item => item.userId === emp._id && item.jobdesk === jdName);
-
                                             return (
                                                 <label key={emp._id + jdName} className="flex items-center gap-2">
                                                     <input
@@ -708,14 +718,19 @@ export default function UpdateEvent() {
                                         {karyawanData
                                             .filter(emp => emp.jobdesk.some(jd => jd.category === 'dapur'))
                                             .map(emp => {
+                                                // Cari status konfirmasi dapur dari event (per menu)
+                                                const dapurEvent = event?.dapur?.[index]?.penanggung_jawab?.find(pj => pj.user_id._id === emp._id);
+                                                const konfirmasi = dapurEvent?.confirmation || 'menunggu';
+                                                if (konfirmasi === 'tidak bisa') return null;
                                                 const disabledInfo = isDapurKaryawanDisabled(emp, index);
+                                                const isDisabled = konfirmasi === 'bisa' || disabledInfo.disabled;
                                                 return (
                                                     <div key={emp._id} className="flex items-center gap-2">
                                                         <input
                                                             type="checkbox"
                                                             id={`dapur-${index}-${emp._id}`}
                                                             checked={menu.penanggung_jawab.includes(emp.name)}
-                                                            disabled={disabledInfo.disabled}
+                                                            disabled={isDisabled}
                                                             onChange={(e) => {
                                                                 const updatedList = [...dapurList];
                                                                 if (e.target.checked) {
@@ -727,21 +742,23 @@ export default function UpdateEvent() {
                                                                 }
                                                                 setDapurList(updatedList);
                                                             }}
-                                                            className={`h-4 w-4 border-2 ${disabledInfo.disabled ? "border-gray-400 bg-gray-200 cursor-not-allowed" : "border-black"}`}
+                                                            className={`h-4 w-4 border-2 ${isDisabled ? "border-gray-400 bg-gray-200 cursor-not-allowed" : "border-black"}`}
                                                         />
                                                         <label
                                                             htmlFor={`dapur-${index}-${emp._id}`}
-                                                            className={`text-sm ${disabledInfo.disabled ? "text-gray-400" : ""}`}
+                                                            className={`text-sm ${isDisabled ? "text-gray-400" : ""}`}
                                                         >
                                                             {emp.name}
+                                                            {konfirmasi === 'bisa' && (
+                                                                <span className="ml-2 text-xs text-gray-500 italic">– sudah konfirmasi bisa</span>
+                                                            )}
                                                             {disabledInfo.disabled && (
                                                                 <span className="ml-2 text-xs text-gray-500 italic">– {disabledInfo.reason}</span>
                                                             )}
                                                         </label>
                                                     </div>
                                                 )
-                                            }
-                                            )}
+                                            })}
                                     </div>
                                 </div>
                                 <button type="button" onClick={() => handleRemoveMenu(index)} className="mt-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700">Hapus Menu</button>
