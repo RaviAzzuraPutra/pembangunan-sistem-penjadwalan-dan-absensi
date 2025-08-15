@@ -53,7 +53,7 @@ exports.createUser = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({
-            message: "Terjadi kesalahan saat menambahkan user",
+            message: "Terjadi kesalahan saat menambahkan user!",
             error: error.message,
             success: false,
         });
@@ -126,7 +126,7 @@ exports.deleteUser = async (req, res) => {
         })
     } catch (error) {
         return res.status(500).json({
-            message: "Terjadi kesalahan saat menghapus user",
+            message: "Terjadi kesalahan saat menghapus user!",
             error: error.message,
             success: false,
         })
@@ -314,7 +314,7 @@ exports.updateUserByAdmin = async (req, res) => {
     } catch (error) {
         console.error("Error updating user:", error);
         return res.status(500).json({
-            message: "Gagal Update Data",
+            message: "Terjadi Kesalahan Saat Mengubah Pengguna!",
             error: error.message,
             success: false,
         });

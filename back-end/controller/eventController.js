@@ -119,7 +119,7 @@ exports.createEvent = async (req, res) => {
     } catch (error) {
         console.error("Error saat membuat event:", error);
         return res.status(500).json({
-            message: "Gagal membuat event!",
+            message: "Terjadi Kesalahan Saat Membuat Acara!",
             error: error.message,
             success: false,
         });
@@ -237,7 +237,7 @@ exports.updateEvent = async (req, res) => {
         // Update event dulu, baru proses Unavailability
         const updatedEvent = await Event.findByIdAndUpdate(id, updatedPayload, { new: true });
         if (!updatedEvent) {
-            return res.status(404).json({ message: 'Gagal update event' });
+            return res.status(404).json({ success: false, message: 'Gagal update event' });
         }
 
         // Gabungkan semua upsert Unavailability dalam satu batch, tanpa duplikasi, dan pastikan yang sudah konfirmasi 'tidak bisa' tetap ada
@@ -340,6 +340,29 @@ exports.updateEvent = async (req, res) => {
         if (ops.length) {
             await Unavailability.bulkWrite(ops);
         }
+
+        // KUMPULKAN USER LAMA & BARU UNTUK NOTIFIKASI PENAMBAHAN (memperbaiki bug ReferenceError)
+        const oldUserIds = [];
+        if (oldEvent.supervisor?.id) oldUserIds.push(oldEvent.supervisor.id.toString());
+        oldEvent.gudang.forEach(g => {
+            if (g.user_id) oldUserIds.push(g.user_id.toString());
+        });
+        oldEvent.dapur.forEach(d => {
+            d.penanggung_jawab.forEach(pj => {
+                if (pj.user_id) oldUserIds.push(pj.user_id.toString());
+            });
+        });
+
+        const newUserIds = [];
+        if (updatedEvent.supervisor?.id) newUserIds.push(updatedEvent.supervisor.id.toString());
+        updatedEvent.gudang.forEach(g => {
+            if (g.user_id) newUserIds.push(g.user_id.toString());
+        });
+        updatedEvent.dapur.forEach(d => {
+            d.penanggung_jawab.forEach(pj => {
+                if (pj.user_id) newUserIds.push(pj.user_id.toString());
+            });
+        });
 
         const uniqueOldUserIds = [...new Set(oldUserIds)];
         const uniqueNewUserIds = [...new Set(newUserIds)];
@@ -459,7 +482,7 @@ exports.updateEvent = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Gagal update event' });
+        res.status(500).json({ success: false, message: 'Terjadi Kesalahan Saat Mengubah Acara!', error: error.message });
     }
 };
 
@@ -553,7 +576,7 @@ exports.deleteEvent = async (req, res) => {
         console.error("Error saat menghapus event:", error);
         return res.status(500).json({
             success: false,
-            message: "Gagal Menghapus Acara"
+            message: "Terjadi Kesalahan Saat Menghapus Acara!"
         });
     }
 };
@@ -648,20 +671,14 @@ exports.confirm = async (req, res) => {
             const empIndex = event.gudang.findIndex(e => e.user_id.toString() === userId);
             if (empIndex === -1) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
             event.gudang[empIndex].confirmation = status;
-            // Jika tidak bisa, hapus dari array (agar tidak lagi muncul di event.updated fetch)
-            if (status === 'tidak bisa') {
-                event.gudang.splice(empIndex, 1);
-            }
+            // Tidak lagi langsung dihapus saat 'tidak bisa'; biarkan tetap tampil sampai admin mengganti.
         } else if (kategoriLower === 'dapur') {
             const menuObj = event.dapur.find(d => d.menu === menu);
             if (!menuObj) return res.status(404).json({ message: 'Menu dapur tidak ditemukan' });
             const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
             if (!pj) return res.status(404).json({ message: 'Penanggung jawab tidak ditemukan' });
             pj.confirmation = status;
-            if (status === 'tidak bisa') {
-                // Hapus langsung penanggung jawab yang tidak bisa
-                menuObj.penanggung_jawab = menuObj.penanggung_jawab.filter(p => p.user_id.toString() !== userId);
-            }
+            // Tidak lagi menghapus otomatis penanggung jawab 'tidak bisa'.
         } else if (kategoriLower === 'supervisor') {
             if (!event.supervisor || event.supervisor.id.toString() !== userId) {
                 return res.status(404).json({ message: 'Supervisor tidak sesuai' });
@@ -867,24 +884,24 @@ exports.getEventInfoForEmployee = async (req, res) => {
         // Get all names
         const participantData = [];
 
-        // Supervisor
-        if (event.supervisor?.id && event.supervisor.confirmation === "bisa") {
-            participantData.push({ name: event.supervisor.id.name, jobdesk: 'Supervisor' });
+        // Supervisor (tampilkan meskipun 'tidak bisa' agar terlihat perlu penggantian)
+        if (event.supervisor?.id) {
+            participantData.push({ name: event.supervisor.id.name, jobdesk: 'Supervisor', confirmation: event.supervisor.confirmation });
         }
 
-        // Gudang
+        // Gudang (tampilkan semua dengan statusnya)
         for (const g of event.gudang) {
-            if (g.user_id && g.confirmation === "bisa") {
-                const jobdeskNames = g.jobdesk.map(j => j.name).join(', ');
-                participantData.push({ name: g.user_id.name, jobdesk: jobdeskNames || '-' });
+            if (g.user_id) {
+                const jobdeskNamesStr = g.jobdesk.map(j => j.name).join(', ');
+                participantData.push({ name: g.user_id.name, jobdesk: jobdeskNamesStr || '-', confirmation: g.confirmation });
             }
         }
 
-        // Dapur
+        // Dapur (tampilkan semua dengan statusnya)
         for (const d of event.dapur) {
             for (const pj of d.penanggung_jawab) {
-                if (pj.user_id && pj.confirmation === "bisa") {
-                    participantData.push({ name: pj.user_id.name, jobdesk: `PJ Menu: ${d.menu} ` });
+                if (pj.user_id) {
+                    participantData.push({ name: pj.user_id.name, jobdesk: `PJ Menu: ${d.menu}`, confirmation: pj.confirmation });
                 }
             }
         }
