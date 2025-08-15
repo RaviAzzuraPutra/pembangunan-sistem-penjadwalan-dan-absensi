@@ -39,8 +39,13 @@ export default function LoginPage() {
                 withCredentials: true
             });
 
-            const { success, user } = response.data;
+            const { success, user, token } = response.data;
             if (success) {
+                try {
+                    if (token) {
+                        localStorage.setItem('auth_token', token);
+                    }
+                } catch (e) { /* ignore storage issues */ }
                 if (user.role === "direktur") {
                     router.replace(`/direktur/${user.slug}`);
                 } else if (user.role === "karyawan") {

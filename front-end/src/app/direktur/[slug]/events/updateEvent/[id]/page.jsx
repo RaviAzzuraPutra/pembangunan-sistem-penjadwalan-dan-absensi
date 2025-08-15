@@ -147,8 +147,8 @@ export default function UpdateEvent() {
                 const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/event/available-employees${params.length ? '?' + params.join('&') : ''}`;
                 const res = await axios.get(url);
                 if (res.data.success) {
+                    // Simpan hanya daftar available; karyawanData akan dibentuk ulang di effect merging
                     setAllKaryawan(res.data.data);
-                    setKaryawanData(res.data.data);
                 }
             } catch (err) {
                 console.log('Gagal fetch semua karyawan:', err);
@@ -159,6 +159,38 @@ export default function UpdateEvent() {
             fetchAllKaryawan();
         }
     }, [prepareDate, serviceDate]);
+
+    // Gabungkan peserta event (supervisor, gudang, dapur) ke dalam karyawanData agar tetap muncul meski sudah dianggap unavailable oleh backend
+    useEffect(() => {
+        if (!event) return;
+        // Mulai dari list available terbaru agar tidak mempertahankan data usang
+        const base = Array.isArray(allKaryawan) ? allKaryawan : [];
+        const map = new Map(base.map(emp => [emp._id, emp]));
+
+        // Supervisor (kecuali 'tidak bisa')
+        if (event.supervisor?.id && event.supervisor.confirmation !== 'tidak bisa') {
+            const sup = event.supervisor.id;
+            if (!map.has(sup._id)) map.set(sup._id, { ...sup });
+        }
+
+        // Gudang participants (tetap tampil jika 'bisa' atau 'menunggu')
+        (event.gudang || []).forEach(g => {
+            if (g.confirmation === 'tidak bisa') return; // hilangkan yang diganti
+            const u = g.user_id;
+            if (u && !map.has(u._id)) map.set(u._id, { ...u });
+        });
+
+        // Dapur penanggung jawab (kecuali 'tidak bisa')
+        (event.dapur || []).forEach(d => {
+            (d.penanggung_jawab || []).forEach(pj => {
+                if (pj.confirmation === 'tidak bisa') return;
+                const u = pj.user_id;
+                if (u && !map.has(u._id)) map.set(u._id, { ...u });
+            });
+        });
+
+        setKaryawanData(Array.from(map.values()));
+    }, [event, allKaryawan]);
 
     const handleGudangToggle = (userId, jobdesk) => {
         setSelectedGudang(prev => {
@@ -614,28 +646,37 @@ export default function UpdateEvent() {
                 {/* Supervisor */}
                 <div>
                     <label className="block mb-2 font-medium">Supervisor</label>
-                    <select
-                        className="w-full border px-3 py-2 rounded"
-                        value={selectedSupervisor}
-                        onChange={handleSupervisorChange}
-                    >
-                        <option value="">-- Silakan pilih supervisor --</option>
-                        {karyawanData
-                            .filter(emp => emp.is_supervisor_candidate)
-                            .map(emp => {
-                                // Ambil status konfirmasi supervisor dari event jika ada
-                                let konfirmasi = 'menunggu';
-                                if (event?.supervisor?.id?._id === emp._id) {
-                                    konfirmasi = event.supervisor.confirmation;
-                                }
-                                if (konfirmasi === 'tidak bisa') return null;
-                                return (
-                                    <option key={emp._id} value={emp.name} disabled={konfirmasi === 'bisa'}>
-                                        {emp.name} {konfirmasi === 'bisa' ? '(Sudah Konfirmasi Bisa)' : ''}
-                                    </option>
-                                );
-                            })}
-                    </select>
+                    {event?.supervisor?.confirmation === 'bisa' ? (
+                        <select
+                            className="w-full border px-3 py-2 rounded bg-gray-100 cursor-not-allowed"
+                            value={selectedSupervisor}
+                            disabled
+                        >
+                            <option value={selectedSupervisor}>{selectedSupervisor} (Sudah Konfirmasi Bisa)</option>
+                        </select>
+                    ) : (
+                        <select
+                            className="w-full border px-3 py-2 rounded"
+                            value={selectedSupervisor}
+                            onChange={handleSupervisorChange}
+                        >
+                            <option value="">-- Silakan pilih supervisor --</option>
+                            {karyawanData
+                                .filter(emp => emp.is_supervisor_candidate)
+                                .map(emp => {
+                                    let konfirmasi = 'menunggu';
+                                    if (event?.supervisor?.id?._id === emp._id) {
+                                        konfirmasi = event.supervisor.confirmation;
+                                    }
+                                    if (konfirmasi === 'tidak bisa') return null;
+                                    return (
+                                        <option key={emp._id} value={emp.name}>
+                                            {emp.name} {konfirmasi === 'bisa' ? '(Sudah Konfirmasi Bisa)' : ''}
+                                        </option>
+                                    );
+                                })}
+                        </select>
+                    )}
                 </div>
 
                 {/* Gudang */}
@@ -716,7 +757,12 @@ export default function UpdateEvent() {
                                     <label className="block text-sm font-medium">Penanggung Jawab</label>
                                     <div className="space-y-1">
                                         {karyawanData
-                                            .filter(emp => emp.jobdesk.some(jd => jd.category === 'dapur'))
+                                            .filter(emp => {
+                                                const hasDapurJobdesk = emp.jobdesk?.some(jd => jd.category === 'dapur');
+                                                // Pastikan yang sudah ada sebagai penanggung jawab tetap muncul walau tidak punya jobdesk (data minim)
+                                                const alreadyInThisMenu = event?.dapur?.[index]?.penanggung_jawab?.some(pj => pj.user_id._id === emp._id && pj.confirmation !== 'tidak bisa');
+                                                return hasDapurJobdesk || alreadyInThisMenu;
+                                            })
                                             .map(emp => {
                                                 // Cari status konfirmasi dapur dari event (per menu)
                                                 const dapurEvent = event?.dapur?.[index]?.penanggung_jawab?.find(pj => pj.user_id._id === emp._id);

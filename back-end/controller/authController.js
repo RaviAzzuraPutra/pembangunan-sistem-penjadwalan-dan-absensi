@@ -22,9 +22,11 @@ exports.login = async (req, res) => {
             });
         }
 
-        const token = jwt.sign({ id: user._id, name: user.name, slug: user.slug, role: user.role }
-            , process.env.JWT_SECRET,
-            { expiresIn: "8h" });
+        const token = jwt.sign(
+            { id: user._id, name: user.name, slug: user.slug, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: "8h" }
+        );
 
         // Deteksi iOS/Safari dari user-agent
         const ua = req.headers['user-agent'] || "";
@@ -38,10 +40,11 @@ exports.login = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
+        // Kirim juga token di body untuk dipakai sebagai Bearer (fallback iOS / PWA)
         return res.status(200).json({
             success: true,
             message: "Berhasil Login!!!",
-            token,
+            token, // frontend akan simpan di localStorage
             user: {
                 id: user._id,
                 name: user.name,
@@ -53,7 +56,7 @@ exports.login = async (req, res) => {
                 face_data: user.face_data,
                 jobdesk: user.jobdesk,
             }
-        })
+        });
     } catch (error) {
         console.error("Terjadi Error Di Function Login", error);
         console.log("Login Error Response:", error.response?.data || error.message);
@@ -99,12 +102,16 @@ exports.logout = async (req, res) => {
 }
 
 exports.checkLogin = async (req, res) => {
-    const token = req.cookies.token;
+    // Ambil token dari cookie ATAU Authorization header (Bearer)
+    let token = req.cookies.token;
     if (!token) {
-        return res.status(401).json({
-            success: false,
-            message: "Anda Belum Login!!!"
-        });
+        const authHeader = req.headers.authorization || '';
+        if (authHeader.startsWith('Bearer ')) {
+            token = authHeader.slice(7).trim();
+        }
+    }
+    if (!token) {
+        return res.status(401).json({ success: false, message: "Anda Belum Login!!!" });
     }
 
     try {

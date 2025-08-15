@@ -182,7 +182,6 @@ exports.getEventById = async (req, res) => {
 }
 
 
-
 exports.updateEvent = async (req, res) => {
     try {
         const { id } = req.params;
