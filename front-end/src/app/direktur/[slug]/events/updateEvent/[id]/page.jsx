@@ -499,9 +499,14 @@ export default function UpdateEvent() {
 
             const gudangPayload = Object.entries(gudangMap).map(([userId, jobdeskNames]) => {
                 const emp = karyawanData.find(e => e._id === userId);
-                // Ambil semua _id jobdesk yang sesuai nama dan kategori gudang
+                // Sumber jobdesk: prioritaskan data terbaru di karyawanData, fallback ke event.gudang (agar tidak hilang saat jobdesk tidak lagi muncul di available list)
+                const eventGudang = event?.gudang?.find(g => g.user_id._id === userId);
+                const sourceJobdesks = Array.isArray(emp?.jobdesk) && emp.jobdesk.length > 0
+                    ? emp.jobdesk
+                    : (eventGudang?.jobdesk || []);
+                // Ambil semua _id jobdesk yang sesuai nama dan kategori gudang secara aman
                 const jdIds = jobdeskNames.map(jdName => {
-                    const jdObj = emp.jobdesk.find(jd => jd.name === jdName && jd.category === 'gudang');
+                    const jdObj = sourceJobdesks.find(jd => jd && jd.name === jdName && jd.category === 'gudang');
                     return jdObj ? jdObj._id : null;
                 }).filter(Boolean);
                 return {
@@ -562,20 +567,21 @@ export default function UpdateEvent() {
 
 
 
+    // List unik nama jobdesk gudang (aman jika jobdesk undefined)
     const jdList = Array.from(new Set(
         karyawanData.flatMap(emp =>
-            emp.jobdesk
-                .filter(jd => jd.category === 'gudang')
+            (emp.jobdesk || [])
+                .filter(jd => jd && jd.category === 'gudang')
                 .map(jd => jd.name)
         )
-    ));
+    )).filter(Boolean);
 
     // Filter gudang: hanya tampilkan yang available (sudah difilter backend), dan bukan supervisor terpilih
     const filteredGudangData = karyawanData.filter(emp => {
         // Cek status konfirmasi dari event.gudang
         const gudangEvent = event?.gudang?.find(g => g.user_id._id === emp._id);
         const konfirmasi = gudangEvent?.confirmation || 'menunggu';
-        return emp.jobdesk.some(jd => jd.category === 'gudang') &&
+        return (emp.jobdesk || []).some(jd => jd && jd.category === 'gudang') &&
             emp._id !== selectedSupervisorId &&
             emp.name.toLowerCase().includes(searchGudang.toLowerCase()) &&
             konfirmasi !== 'tidak bisa';
@@ -695,11 +701,11 @@ export default function UpdateEvent() {
                                 <span className="block font-semibold mb-1">{jdName}</span>
                                 <div className="space-y-1 ml-2">
                                     {filteredGudangData
-                                        .filter(emp => emp.jobdesk.some(jd => jd.name === jdName && jd.category === 'gudang'))
+                                        .filter(emp => (emp.jobdesk || []).some(jd => jd && jd.name === jdName && jd.category === 'gudang'))
                                         .map(emp => {
                                             const gudangEvent = event?.gudang.find(g =>
                                                 g.user_id._id === emp._id &&
-                                                g.jobdesk.some(j => j.name === jdName)
+                                                (g.jobdesk || []).some(j => j && j.name === jdName)
                                             );
                                             const konfirmasi = gudangEvent?.confirmation || 'menunggu';
                                             if (konfirmasi === 'tidak bisa') return null;

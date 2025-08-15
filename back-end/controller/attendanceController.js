@@ -115,23 +115,34 @@ exports.getAttendancesByEvent = async (req, res) => {
         }
 
 
-        // 1. Kumpulkan semua ID peserta
+        // 1. Kumpulkan semua ID peserta dengan konfirmasi "bisa" saja
         const pesertaSet = new Set();
-        event.gudang.forEach(g => g.user_id && pesertaSet.add(g.user_id._id.toString()));
-        event.dapur.forEach(d => d.penanggung_jawab.forEach(pj => pj.user_id && pesertaSet.add(pj.user_id._id.toString())));
-        if (event.supervisor?.id) pesertaSet.add(event.supervisor.id._id.toString());
+        // Supervisor
+        if (event.supervisor?.id && event.supervisor.confirmation === 'bisa') {
+            pesertaSet.add(event.supervisor.id._id.toString());
+        }
+        // Gudang (filter hanya yang konfirmasi bisa)
+        event.gudang
+            .filter(g => g.confirmation === 'bisa')
+            .forEach(g => g.user_id && pesertaSet.add(g.user_id._id.toString()));
+        // Dapur (penanggung jawab yang konfirmasi bisa)
+        event.dapur.forEach(d => {
+            d.penanggung_jawab
+                .filter(pj => pj.confirmation === 'bisa')
+                .forEach(pj => pj.user_id && pesertaSet.add(pj.user_id._id.toString()));
+        });
 
         const karyawanArray = Array.from(pesertaSet).map(userIdStr => {
-            if (event.supervisor?.id?._id.toString() === userIdStr) {
+            if (event.supervisor?.id?._id.toString() === userIdStr && event.supervisor.confirmation === 'bisa') {
                 return { ...event.supervisor.id.toObject(), jobdeskLabel: 'supervisor' };
             }
-            const gud = event.gudang.find(g => g.user_id?._id.toString() === userIdStr);
+            const gud = event.gudang.find(g => g.user_id?._id.toString() === userIdStr && g.confirmation === 'bisa');
             if (gud) {
                 const jobdeskNames = (gud.jobdesk || []).map(j => j.name).join(', ');
                 return { ...gud.user_id.toObject(), jobdeskLabel: jobdeskNames };
             }
             for (const d of event.dapur) {
-                const pj = d.penanggung_jawab.find(pj => pj.user_id?._id.toString() === userIdStr);
+                const pj = d.penanggung_jawab.find(pj => pj.user_id?._id.toString() === userIdStr && pj.confirmation === 'bisa');
                 if (pj) return { ...pj.user_id.toObject(), jobdeskLabel: 'penanggung jawab dapur' };
             }
             return { _id: userIdStr, name: "Unknown", slug: "", jobdeskLabel: "" };
