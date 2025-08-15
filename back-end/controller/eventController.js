@@ -244,18 +244,33 @@ exports.updateEvent = async (req, res) => {
         const opsMap = new Map();
         // 1️⃣ Pertahankan semua yang "tidak bisa" dari event lama
         if (oldEvent.supervisor?.id && oldEvent.supervisor.confirmation === 'tidak bisa') {
+            // Supervisor diblokir pada kedua tanggal (prepare & service) agar tidak bisa dipilih lagi
             opsMap.set(`${oldEvent.supervisor.id}_${updatedPayload.date_prepare.toISOString()}`, {
                 user_id: oldEvent.supervisor.id,
                 date: updatedPayload.date_prepare
             });
+            if (updatedPayload.date_service) {
+                opsMap.set(`${oldEvent.supervisor.id}_${updatedPayload.date_service.toISOString()}`, {
+                    user_id: oldEvent.supervisor.id,
+                    date: updatedPayload.date_service
+                });
+            }
         }
         if (Array.isArray(oldEvent.gudang)) {
             oldEvent.gudang.forEach(g => {
                 if (g.confirmation === 'tidak bisa') {
+                    // Blokir tanggal prepare
                     opsMap.set(`${g.user_id}_${updatedPayload.date_prepare.toISOString()}`, {
                         user_id: g.user_id,
                         date: updatedPayload.date_prepare
                     });
+                    // Jika gudang ikut tahap service (umumnya iya) blokir juga tanggal service
+                    if (updatedPayload.date_service) {
+                        opsMap.set(`${g.user_id}_${updatedPayload.date_service.toISOString()}`, {
+                            user_id: g.user_id,
+                            date: updatedPayload.date_service
+                        });
+                    }
                 }
             });
         }
@@ -585,14 +600,28 @@ exports.confirm = async (req, res) => {
         }
 
         const kategoriLower = kategori.toLowerCase();
-        const tanggal = kategoriLower === "gudang" ? event.date_prepare : event.date_service;
+        // Tentukan tanggal yang perlu diblokir berdasarkan kategori & tahap kerja
+        const targetDates = new Set();
+        if (kategoriLower === 'gudang') {
+            // Gudang biasa bekerja di kedua hari (prepare & service)
+            if (event.date_prepare) targetDates.add(event.date_prepare);
+            if (event.date_service) targetDates.add(event.date_service);
+        } else if (kategoriLower === 'dapur') {
+            // Dapur hanya service
+            if (event.date_service) targetDates.add(event.date_service);
+        } else if (kategoriLower === 'supervisor') {
+            // Supervisor ada di kedua hari
+            if (event.date_prepare) targetDates.add(event.date_prepare);
+            if (event.date_service) targetDates.add(event.date_service);
+        }
 
         if (status === "tidak bisa") {
-            // Cek apakah sudah ada Unavailability sebelumnya
-            const existingUnavailability = await Unavailability.findOne({ user_id: userId, date: tanggal });
-
-            if (!existingUnavailability) {
-                await Unavailability.create({ user_id: userId, date: tanggal });
+            // Upsert Unavailability untuk seluruh targetDates
+            for (const tgl of targetDates) {
+                const exists = await Unavailability.findOne({ user_id: userId, date: tgl });
+                if (!exists) {
+                    await Unavailability.create({ user_id: userId, date: tgl });
+                }
             }
 
             const direktur = await User.findOne({ role: 'direktur' });
@@ -616,20 +645,32 @@ exports.confirm = async (req, res) => {
 
         // Update konfirmasi di event
         if (kategoriLower === 'gudang') {
-            const emp = event.gudang.find(e => e.user_id.toString() === userId);
-            if (!emp) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
-            emp.confirmation = status;
+            const empIndex = event.gudang.findIndex(e => e.user_id.toString() === userId);
+            if (empIndex === -1) return res.status(404).json({ message: 'Karyawan tidak ditemukan di Gudang' });
+            event.gudang[empIndex].confirmation = status;
+            // Jika tidak bisa, hapus dari array (agar tidak lagi muncul di event.updated fetch)
+            if (status === 'tidak bisa') {
+                event.gudang.splice(empIndex, 1);
+            }
         } else if (kategoriLower === 'dapur') {
             const menuObj = event.dapur.find(d => d.menu === menu);
             if (!menuObj) return res.status(404).json({ message: 'Menu dapur tidak ditemukan' });
             const pj = menuObj.penanggung_jawab.find(p => p.user_id.toString() === userId);
             if (!pj) return res.status(404).json({ message: 'Penanggung jawab tidak ditemukan' });
             pj.confirmation = status;
+            if (status === 'tidak bisa') {
+                // Hapus langsung penanggung jawab yang tidak bisa
+                menuObj.penanggung_jawab = menuObj.penanggung_jawab.filter(p => p.user_id.toString() !== userId);
+            }
         } else if (kategoriLower === 'supervisor') {
             if (!event.supervisor || event.supervisor.id.toString() !== userId) {
                 return res.status(404).json({ message: 'Supervisor tidak sesuai' });
             }
             event.supervisor.confirmation = status;
+            if (status === 'tidak bisa') {
+                // Kosongkan supervisor agar bisa diganti
+                event.supervisor = { id: event.supervisor.id, confirmation: 'tidak bisa' };
+            }
         } else {
             return res.status(400).json({ message: 'Kategori tidak valid' });
         }
