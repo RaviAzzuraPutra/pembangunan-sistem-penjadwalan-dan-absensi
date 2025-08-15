@@ -44,7 +44,7 @@ exports.login = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Berhasil Login!!!",
-            token, // frontend akan simpan di localStorage
+            token,
             user: {
                 id: user._id,
                 name: user.name,
@@ -74,32 +74,36 @@ exports.logout = async (req, res) => {
             return res.status(401).json({
                 success: false,
                 message: "Anda Belum Login!!!"
-            })
+            });
         }
 
-        // Deteksi iOS/Safari dari user-agent
+        // Deteksi iOS/Safari
         const ua = req.headers['user-agent'] || "";
         const isIOS = /iP(hone|ad|od)/.test(ua);
         const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
         const sameSiteOption = (isIOS || isSafari) ? "lax" : "none";
+
         res.clearCookie("token", {
             httpOnly: true,
-            secure: true,
+            secure: true, // harus sama persis dengan saat login
             sameSite: sameSiteOption,
+            maxAge: 8 * 60 * 60 * 1000, // sama persis dengan login
+            path: "/" // penting untuk memastikan cookie terhapus
         });
 
         return res.status(200).json({
             success: true,
             message: "Berhasil Logout!!!"
-        })
+        });
     } catch (error) {
         console.error("Terjadi Error Di Function Logout", error);
         return res.status(500).json({
             success: false,
             message: "Terjadi Kesalahan Pada Server!!!",
-        })
+        });
     }
-}
+};
+
 
 exports.checkLogin = async (req, res) => {
     // Ambil token dari cookie ATAU Authorization header (Bearer)
