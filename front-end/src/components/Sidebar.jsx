@@ -24,10 +24,12 @@ export default function Sidebar() {
                 withCredentials: true,
             });
             if (response.data.success) {
+                try { localStorage.removeItem('auth_token'); } catch (e) { }
                 router.replace("/login");
             }
         } catch (error) {
             console.log("Logout failed:", error);
+            try { localStorage.removeItem('auth_token'); } catch (e) { }
             router.replace("/login");
         }
 
@@ -94,7 +96,7 @@ export default function Sidebar() {
                     <Link
                         href="/login"
                         className="flex items-center px-5 py-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-300 hover:text-black"
-                        onClick={() => handleLogout()}
+                        onClick={(e) => { e.preventDefault(); handleLogout(); }}
                     >
                         <Image
                             src="/icons/logout.png"

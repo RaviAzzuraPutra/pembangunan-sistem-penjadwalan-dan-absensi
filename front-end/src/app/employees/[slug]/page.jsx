@@ -36,13 +36,14 @@ export default function Employees() {
             const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, {}, {
                 withCredentials: true,
             });
+            try { localStorage.removeItem('auth_token'); } catch (e) { }
             if (response.data.success) {
                 router.replace("/login");
-                // Paksa ganti halaman agar tidak bisa kembali dengan tombol back
                 window.location.replace("/login");
             }
         } catch (error) {
             console.log("Logout failed:", error);
+            try { localStorage.removeItem('auth_token'); } catch (e) { }
             router.replace("/login");
             window.location.replace("/login");
         }
@@ -117,7 +118,7 @@ export default function Employees() {
                         <Link
                             href="/login"
                             className="flex items-center px-5 py-2 text-black"
-                            onClick={() => handleLogout()}
+                            onClick={(e) => { e.preventDefault(); handleLogout(); }}
                         >
                             <Image
                                 src="/icons/logout.png"

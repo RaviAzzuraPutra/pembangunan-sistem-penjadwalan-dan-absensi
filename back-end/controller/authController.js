@@ -70,14 +70,7 @@ exports.login = async (req, res) => {
 
 exports.logout = async (req, res) => {
     try {
-        if (!req.cookies.token) {
-            return res.status(401).json({
-                success: false,
-                message: "Anda Belum Login!!!"
-            });
-        }
-
-        // Deteksi iOS/Safari
+        // Deteksi iOS/Safari (harus sama dengan login agar clear berhasil)
         const ua = req.headers['user-agent'] || "";
         const isIOS = /iP(hone|ad|od)/.test(ua);
         const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
@@ -85,10 +78,9 @@ exports.logout = async (req, res) => {
 
         res.clearCookie("token", {
             httpOnly: true,
-            secure: true, // harus sama persis dengan saat login
+            secure: true,
             sameSite: sameSiteOption,
-            maxAge: 8 * 60 * 60 * 1000, // sama persis dengan login
-            path: "/" // penting untuk memastikan cookie terhapus
+            path: "/"
         });
 
         return res.status(200).json({
