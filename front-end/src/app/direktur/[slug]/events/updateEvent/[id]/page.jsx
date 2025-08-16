@@ -93,14 +93,18 @@ export default function UpdateEvent() {
             setSearchQuery(event.location.name);
             setLocationAddress(event.location.address);
             setSelectedSupervisor(event.supervisor?.id?.name);
-            setSelectedGudang(
-                event.gudang
-                    .filter(g => g.confirmation !== 'tidak bisa')
-                    .map(g => ({
-                        userId: g.user_id._id,
-                        jobdesk: g.jobdesk[0]?.name
-                    }))
-            );
+            // Simpan seluruh kombinasi user-jobdesk (bukan hanya index 0) agar tidak hilang saat update
+            const gudangSelected = [];
+            event.gudang
+                .filter(g => g.confirmation !== 'tidak bisa')
+                .forEach(g => {
+                    (g.jobdesk || []).forEach(jd => {
+                        if (jd?.name) {
+                            gudangSelected.push({ userId: g.user_id._id, jobdesk: jd.name });
+                        }
+                    });
+                });
+            setSelectedGudang(gudangSelected);
             setDapurList(
                 event.dapur.map(d => ({
                     menu: d.menu,
@@ -499,21 +503,19 @@ export default function UpdateEvent() {
 
             const gudangPayload = Object.entries(gudangMap).map(([userId, jobdeskNames]) => {
                 const emp = karyawanData.find(e => e._id === userId);
-                // Sumber jobdesk: prioritaskan data terbaru di karyawanData, fallback ke event.gudang (agar tidak hilang saat jobdesk tidak lagi muncul di available list)
                 const eventGudang = event?.gudang?.find(g => g.user_id._id === userId);
-                const sourceJobdesks = Array.isArray(emp?.jobdesk) && emp.jobdesk.length > 0
-                    ? emp.jobdesk
-                    : (eventGudang?.jobdesk || []);
-                // Ambil semua _id jobdesk yang sesuai nama dan kategori gudang secara aman
-                const jdIds = jobdeskNames.map(jdName => {
-                    const jdObj = sourceJobdesks.find(jd => jd && jd.name === jdName && jd.category === 'gudang');
-                    return jdObj ? jdObj._id : null;
-                }).filter(Boolean);
-                return {
-                    user_id: userId,
-                    jobdesk: jdIds,
-                    tahap: ['prepare', 'service']
-                };
+                // Gabungkan semua sumber jobdesk (karyawan + event existing) supaya tidak hilang jika tidak ter-select di UI sekarang
+                const sourceJobdesks = [
+                    ...(Array.isArray(emp?.jobdesk) ? emp.jobdesk : []),
+                    ...(Array.isArray(eventGudang?.jobdesk) ? eventGudang.jobdesk : [])
+                ];
+                const uniqueJobdeskMap = new Map();
+                sourceJobdesks.forEach(jd => { if (jd?._id) uniqueJobdeskMap.set(jd._id, jd); });
+                // Filter hanya yang kategorinya gudang dan dipilih (jobdeskNames) agar tidak kirim jobdesk dapur atau lain
+                const jdIds = Array.from(uniqueJobdeskMap.values())
+                    .filter(jd => jd.category === 'gudang' && jobdeskNames.includes(jd.name))
+                    .map(jd => jd._id);
+                return { user_id: userId, jobdesk: jdIds, tahap: ['prepare', 'service'] };
             });
 
             const dapurPayload = dapurList.map(menu => ({

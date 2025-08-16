@@ -193,39 +193,45 @@ exports.updateEvent = async (req, res) => {
             return res.status(404).json({ message: 'Event tidak ditemukan' });
         }
 
-        // Logic Supervisor
+        // ===== Supervisor Logic (tambahkan guard agar tidak crash saat tidak ada supervisor lama / baru) =====
         let supervisorPayload;
-        const supervisorBaruId = updateData.supervisor.id;
+        const supervisorBaruId = updateData?.supervisor?.id;
+        if (!supervisorBaruId) {
+            return res.status(400).json({ success: false, message: 'Supervisor wajib diisi' });
+        }
 
-        if (oldEvent.supervisor.id.toString() === supervisorBaruId) {
-            // Supervisor tidak diganti → pertahankan confirmation lama
+        const oldSupervisorId = oldEvent?.supervisor?.id ? oldEvent.supervisor.id.toString() : null;
+        if (oldSupervisorId && oldSupervisorId === supervisorBaruId) {
             supervisorPayload = {
                 id: supervisorBaruId,
                 confirmation: oldEvent.supervisor.confirmation
             };
         } else {
-            // Supervisor diganti
-            // Cari apakah orang ini sebelumnya masuk di gudang & sudah konfirmasi bisa
             const gudangData = oldEvent.gudang.find(g => g.user_id.toString() === supervisorBaruId);
-            if (gudangData?.confirmation === 'bisa') {
-                supervisorPayload = { id: supervisorBaruId, confirmation: 'bisa' };
-            } else {
-                supervisorPayload = { id: supervisorBaruId, confirmation: 'menunggu' };
-            }
+            supervisorPayload = { id: supervisorBaruId, confirmation: gudangData?.confirmation === 'bisa' ? 'bisa' : 'menunggu' };
         }
 
-
         const slug = slugify(updateData.name, { lower: true, strict: true });
+
+        // ===== Normalisasi tipe Date agar .toISOString() tidak error (sebelumnya string) =====
+        const datePrepareObj = updateData.date_prepare ? new Date(updateData.date_prepare) : null;
+        const dateServiceObj = updateData.date_service ? new Date(updateData.date_service) : null;
+        if (datePrepareObj && isNaN(datePrepareObj.getTime())) {
+            return res.status(400).json({ success: false, message: 'Format date_prepare tidak valid' });
+        }
+        if (dateServiceObj && isNaN(dateServiceObj.getTime())) {
+            return res.status(400).json({ success: false, message: 'Format date_service tidak valid' });
+        }
 
         // Build payload baru seluruhnya
         const updatedPayload = {
             name: updateData.name,
             slug: slug,
             porsi: updateData.porsi,
-            date_prepare: updateData.date_prepare,
+            date_prepare: datePrepareObj,
             time_start_prepare: updateData.time_start_prepare,
             time_end_prepare: updateData.time_end_prepare,
-            date_service: updateData.date_service,
+            date_service: dateServiceObj,
             time_start_service: updateData.time_start_service,
             time_end_service: updateData.time_end_service,
             location: updateData.location,
@@ -243,16 +249,16 @@ exports.updateEvent = async (req, res) => {
         // Gabungkan semua upsert Unavailability dalam satu batch, tanpa duplikasi, dan pastikan yang sudah konfirmasi 'tidak bisa' tetap ada
         const opsMap = new Map();
         // 1️⃣ Pertahankan semua yang "tidak bisa" dari event lama
-        if (oldEvent.supervisor?.id && oldEvent.supervisor.confirmation === 'tidak bisa') {
+        if (oldEvent.supervisor?.id && oldEvent.supervisor.confirmation === 'tidak bisa' && datePrepareObj) {
             // Supervisor diblokir pada kedua tanggal (prepare & service) agar tidak bisa dipilih lagi
-            opsMap.set(`${oldEvent.supervisor.id}_${updatedPayload.date_prepare.toISOString()}`, {
+            opsMap.set(`${oldEvent.supervisor.id}_${datePrepareObj.toISOString()}`, {
                 user_id: oldEvent.supervisor.id,
-                date: updatedPayload.date_prepare
+                date: datePrepareObj
             });
-            if (updatedPayload.date_service) {
-                opsMap.set(`${oldEvent.supervisor.id}_${updatedPayload.date_service.toISOString()}`, {
+            if (dateServiceObj) {
+                opsMap.set(`${oldEvent.supervisor.id}_${dateServiceObj.toISOString()}`, {
                     user_id: oldEvent.supervisor.id,
-                    date: updatedPayload.date_service
+                    date: dateServiceObj
                 });
             }
         }
@@ -260,15 +266,15 @@ exports.updateEvent = async (req, res) => {
             oldEvent.gudang.forEach(g => {
                 if (g.confirmation === 'tidak bisa') {
                     // Blokir tanggal prepare
-                    opsMap.set(`${g.user_id}_${updatedPayload.date_prepare.toISOString()}`, {
+                    if (datePrepareObj) opsMap.set(`${g.user_id}_${datePrepareObj.toISOString()}`, {
                         user_id: g.user_id,
-                        date: updatedPayload.date_prepare
+                        date: datePrepareObj
                     });
                     // Jika gudang ikut tahap service (umumnya iya) blokir juga tanggal service
-                    if (updatedPayload.date_service) {
-                        opsMap.set(`${g.user_id}_${updatedPayload.date_service.toISOString()}`, {
+                    if (dateServiceObj) {
+                        opsMap.set(`${g.user_id}_${dateServiceObj.toISOString()}`, {
                             user_id: g.user_id,
-                            date: updatedPayload.date_service
+                            date: dateServiceObj
                         });
                     }
                 }
@@ -279,9 +285,9 @@ exports.updateEvent = async (req, res) => {
                 if (Array.isArray(d.penanggung_jawab)) {
                     d.penanggung_jawab.forEach(pj => {
                         if (pj.confirmation === 'tidak bisa') {
-                            opsMap.set(`${pj.user_id}_${updatedPayload.date_service.toISOString()}`, {
+                            if (dateServiceObj) opsMap.set(`${pj.user_id}_${dateServiceObj.toISOString()}`, {
                                 user_id: pj.user_id,
-                                date: updatedPayload.date_service
+                                date: dateServiceObj
                             });
                         }
                     });
@@ -291,9 +297,9 @@ exports.updateEvent = async (req, res) => {
         // Semua user gudang baru (jika ada perubahan)
         if (Array.isArray(updatedPayload.gudang)) {
             updatedPayload.gudang.forEach(g => {
-                opsMap.set(`${g.user_id}_${updatedPayload.date_prepare.toISOString()}`, {
+                if (datePrepareObj) opsMap.set(`${g.user_id}_${datePrepareObj.toISOString()}`, {
                     user_id: g.user_id,
-                    date: updatedPayload.date_prepare
+                    date: datePrepareObj
                 });
             });
         }
@@ -301,9 +307,9 @@ exports.updateEvent = async (req, res) => {
         if (Array.isArray(updatedPayload.dapur)) {
             updatedPayload.dapur.forEach(d => {
                 d.penanggung_jawab.forEach(pj => {
-                    opsMap.set(`${pj.user_id}_${updatedPayload.date_service.toISOString()}`, {
+                    if (dateServiceObj) opsMap.set(`${pj.user_id}_${dateServiceObj.toISOString()}`, {
                         user_id: pj.user_id,
-                        date: updatedPayload.date_service
+                        date: dateServiceObj
                     });
                 });
             });
@@ -319,9 +325,9 @@ exports.updateEvent = async (req, res) => {
                                 newDapur.penanggung_jawab.some(newPj => newPj.user_id.toString() === oldPj.user_id.toString())
                             );
                             if (!masihAda) {
-                                opsMap.set(`${oldPj.user_id}_${updatedPayload.date_service.toISOString()}`, {
+                                if (dateServiceObj) opsMap.set(`${oldPj.user_id}_${dateServiceObj.toISOString()}`, {
                                     user_id: oldPj.user_id,
-                                    date: updatedPayload.date_service
+                                    date: dateServiceObj
                                 });
                             }
                         }
