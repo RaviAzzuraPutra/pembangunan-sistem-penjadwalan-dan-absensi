@@ -518,15 +518,22 @@ export default function UpdateEvent() {
                 return { user_id: userId, jobdesk: jdIds, tahap: ['prepare', 'service'] };
             });
 
-            const dapurPayload = dapurList.map(menu => ({
+            const dapurPayload = dapurList.map((menu, idx) => ({
                 menu: menu.menu,
                 jumlah_porsi: Number(menu.jumlah_porsi),
                 penanggung_jawab: menu.penanggung_jawab.map(name => {
                     const emp = karyawanData.find(e => e.name === name);
-                    return emp ? {
+                    if (!emp) return null;
+                    // Cari status konfirmasi lama jika ada
+                    let oldConfirmation = 'menunggu';
+                    const oldPJ = event?.dapur?.[idx]?.penanggung_jawab?.find(pj => pj.user_id._id === emp._id);
+                    if (oldPJ && oldPJ.confirmation) {
+                        oldConfirmation = oldPJ.confirmation;
+                    }
+                    return {
                         user_id: emp._id,
-                        confirmation: 'menunggu'
-                    } : null;
+                        confirmation: oldConfirmation
+                    };
                 }).filter(Boolean),
                 tahap: 'service'
             }));
@@ -578,7 +585,7 @@ export default function UpdateEvent() {
         )
     )).filter(Boolean);
 
-    // Filter gudang: hanya tampilkan yang available (sudah difilter backend), dan bukan supervisor terpilih
+    // Filter gudang: tampilkan semua yang statusnya 'bisa' atau 'menunggu', sembunyikan 'tidak bisa'
     const filteredGudangData = karyawanData.filter(emp => {
         // Cek status konfirmasi dari event.gudang
         const gudangEvent = event?.gudang?.find(g => g.user_id._id === emp._id);
@@ -586,7 +593,7 @@ export default function UpdateEvent() {
         return (emp.jobdesk || []).some(jd => jd && jd.category === 'gudang') &&
             emp._id !== selectedSupervisorId &&
             emp.name.toLowerCase().includes(searchGudang.toLowerCase()) &&
-            konfirmasi !== 'tidak bisa';
+            (konfirmasi === 'bisa' || konfirmasi === 'menunggu');
     });
 
     // Dapur: hanya tampilkan yang available (sudah difilter backend)
@@ -722,7 +729,13 @@ export default function UpdateEvent() {
                                                         disabled={konfirmasi === 'bisa'}
                                                     />
                                                     <span className="truncate">
-                                                        {emp.name} {konfirmasi === 'bisa' && <span className="ml-2 text-xs text-gray-500 italic">– sudah konfirmasi bisa, tidak dapat diubah</span>}
+                                                        {emp.name}
+                                                        {konfirmasi === 'bisa' && (
+                                                            <span className="ml-2 text-xs text-gray-500 italic">– sudah konfirmasi bisa, tidak dapat diubah</span>
+                                                        )}
+                                                        {konfirmasi === 'menunggu' && (
+                                                            <span className="ml-2 text-xs text-gray-400 italic">– menunggu konfirmasi</span>
+                                                        )}
                                                     </span>
                                                 </label>
                                             );
