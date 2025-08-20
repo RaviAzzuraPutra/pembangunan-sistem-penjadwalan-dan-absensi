@@ -585,15 +585,11 @@ export default function UpdateEvent() {
         )
     )).filter(Boolean);
 
-    // Filter gudang: tampilkan semua yang statusnya 'bisa' atau 'menunggu', sembunyikan 'tidak bisa'
+    // Filter gudang: tampilkan semua karyawan yang punya jobdesk gudang (bukan supervisor), baik yang sudah dijadwalkan maupun belum
     const filteredGudangData = karyawanData.filter(emp => {
-        // Cek status konfirmasi dari event.gudang
-        const gudangEvent = event?.gudang?.find(g => g.user_id._id === emp._id);
-        const konfirmasi = gudangEvent?.confirmation || 'menunggu';
         return (emp.jobdesk || []).some(jd => jd && jd.category === 'gudang') &&
             emp._id !== selectedSupervisorId &&
-            emp.name.toLowerCase().includes(searchGudang.toLowerCase()) &&
-            (konfirmasi === 'bisa' || konfirmasi === 'menunggu');
+            emp.name.toLowerCase().includes(searchGudang.toLowerCase());
     });
 
     // Dapur: hanya tampilkan yang available (sudah difilter backend)
@@ -712,11 +708,12 @@ export default function UpdateEvent() {
                                     {filteredGudangData
                                         .filter(emp => (emp.jobdesk || []).some(jd => jd && jd.name === jdName && jd.category === 'gudang'))
                                         .map(emp => {
+                                            // Cek apakah emp dijadwalkan pada event.gudang untuk jobdesk ini
                                             const gudangEvent = event?.gudang.find(g =>
                                                 g.user_id._id === emp._id &&
                                                 (g.jobdesk || []).some(j => j && j.name === jdName)
                                             );
-                                            const konfirmasi = gudangEvent?.confirmation || 'menunggu';
+                                            const konfirmasi = gudangEvent?.confirmation;
                                             if (konfirmasi === 'tidak bisa') return null;
                                             const isChecked = selectedGudang.some(item => item.userId === emp._id && item.jobdesk === jdName);
                                             return (
