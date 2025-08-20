@@ -503,7 +503,7 @@ export default function UpdateEvent() {
 
             const gudangPayload = Object.entries(gudangMap).map(([userId, jobdeskNames]) => {
                 const emp = karyawanData.find(e => e._id === userId);
-                const eventGudang = event?.gudang?.find(g => g.user_id._id === userId);
+                const eventGudang = event?.gudang?.find(g => String(g.user_id?._id || g.user_id) === String(userId));
                 // Gabungkan semua sumber jobdesk (karyawan + event existing) supaya tidak hilang jika tidak ter-select di UI sekarang
                 const sourceJobdesks = [
                     ...(Array.isArray(emp?.jobdesk) ? emp.jobdesk : []),
@@ -515,7 +515,9 @@ export default function UpdateEvent() {
                 const jdIds = Array.from(uniqueJobdeskMap.values())
                     .filter(jd => jd.category === 'gudang' && jobdeskNames.includes(jd.name))
                     .map(jd => jd._id);
-                return { user_id: userId, jobdesk: jdIds, tahap: ['prepare', 'service'] };
+                // Preserve existing confirmation if present (so 'bisa' stays 'bisa'); new users default to 'menunggu'
+                const oldConfirmation = eventGudang?.confirmation || 'menunggu';
+                return { user_id: userId, jobdesk: jdIds, tahap: ['prepare', 'service'], confirmation: oldConfirmation };
             });
 
             const dapurPayload = dapurList.map((menu, idx) => ({
