@@ -722,7 +722,7 @@ export default function UpdateEvent() {
                                                         disabled={konfirmasi === 'bisa'}
                                                     />
                                                     <span className="truncate">
-                                                        {emp.name} {konfirmasi === 'bisa' && '(sudah konfirmasi)'}
+                                                        {emp.name} {konfirmasi === 'bisa' && <span className="ml-2 text-xs text-gray-500 italic">– sudah konfirmasi bisa, tidak dapat diubah</span>}
                                                     </span>
                                                 </label>
                                             );
@@ -786,6 +786,7 @@ export default function UpdateEvent() {
                                                             checked={menu.penanggung_jawab.includes(emp.name)}
                                                             disabled={isDisabled}
                                                             onChange={(e) => {
+                                                                if (konfirmasi === 'bisa') return; // tidak bisa diubah jika sudah konfirmasi
                                                                 const updatedList = [...dapurList];
                                                                 if (e.target.checked) {
                                                                     updatedList[index].penanggung_jawab.push(emp.name);
@@ -804,7 +805,7 @@ export default function UpdateEvent() {
                                                         >
                                                             {emp.name}
                                                             {konfirmasi === 'bisa' && (
-                                                                <span className="ml-2 text-xs text-gray-500 italic">– sudah konfirmasi bisa</span>
+                                                                <span className="ml-2 text-xs text-gray-500 italic">– sudah konfirmasi bisa, tidak dapat diubah</span>
                                                             )}
                                                             {disabledInfo.disabled && (
                                                                 <span className="ml-2 text-xs text-gray-500 italic">– {disabledInfo.reason}</span>
@@ -815,7 +816,17 @@ export default function UpdateEvent() {
                                             })}
                                     </div>
                                 </div>
-                                <button type="button" onClick={() => handleRemoveMenu(index)} className="mt-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700">Hapus Menu</button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveMenu(index)}
+                                    className="mt-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-700"
+                                    disabled={event?.dapur?.[index]?.penanggung_jawab?.some(pj => pj.confirmation === 'bisa')}
+                                >
+                                    Hapus Menu
+                                    {event?.dapur?.[index]?.penanggung_jawab?.some(pj => pj.confirmation === 'bisa') && (
+                                        <span className="ml-2 text-xs text-gray-500 italic">– sudah ada penanggung jawab konfirmasi bisa, tidak dapat dihapus</span>
+                                    )}
+                                </button>
                             </div>
                         ))}
                     </div>

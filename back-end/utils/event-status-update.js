@@ -26,6 +26,29 @@ const StartEventStatusCron = () => {
 
                 if (newStatus !== event.status) {
                     event.status = newStatus;
+                    // Jika event selesai, update semua konfirmasi 'menunggu' menjadi 'tidak bisa'
+                    if (newStatus === 'selesai') {
+                        // Update gudang
+                        if (Array.isArray(event.gudang)) {
+                            event.gudang.forEach(g => {
+                                if (g.confirmation === 'menunggu') {
+                                    g.confirmation = 'tidak bisa';
+                                }
+                            });
+                        }
+                        // Update dapur penanggung jawab
+                        if (Array.isArray(event.dapur)) {
+                            event.dapur.forEach(d => {
+                                if (Array.isArray(d.penanggung_jawab)) {
+                                    d.penanggung_jawab.forEach(pj => {
+                                        if (pj.confirmation === 'menunggu') {
+                                            pj.confirmation = 'tidak bisa';
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    }
                     await event.save();
                 }
             }
