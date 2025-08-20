@@ -515,7 +515,9 @@ export default function UpdateEvent() {
                 const jdIds = Array.from(uniqueJobdeskMap.values())
                     .filter(jd => jd.category === 'gudang' && jobdeskNames.includes(jd.name))
                     .map(jd => jd._id);
-                return { user_id: userId, jobdesk: jdIds, tahap: ['prepare', 'service'] };
+                // Pertahankan confirmation lama jika ada, default 'menunggu' untuk user baru
+                const confirmation = eventGudang?.confirmation || 'menunggu';
+                return { user_id: userId, jobdesk: jdIds, tahap: ['prepare', 'service'], confirmation };
             });
 
             const dapurPayload = dapurList.map((menu, idx) => ({
@@ -576,21 +578,26 @@ export default function UpdateEvent() {
 
 
 
-    // List unik nama jobdesk gudang (aman jika jobdesk undefined)
-    const jdList = Array.from(new Set(
-        karyawanData.flatMap(emp =>
-            (emp.jobdesk || [])
-                .filter(jd => jd && jd.category === 'gudang')
-                .map(jd => jd.name)
-        )
-    )).filter(Boolean);
+    // Jika sedang melakukan edit (ada event), gunakan daftar gudang dari event supaya hanya
+    // menampilkan karyawan gudang yang sudah dijadwalkan pada event (kecuali yg 'tidak bisa').
+    // Fallback: saat event belum ada, ambil daftar jobdesk gudang dari karyawanData.
+    const scheduledGudangData = (event?.gudang || []).filter(g => g && g.confirmation !== 'tidak bisa');
 
-    // Filter gudang: tampilkan semua karyawan yang punya jobdesk gudang (bukan supervisor), baik yang sudah dijadwalkan maupun belum
-    const filteredGudangData = karyawanData.filter(emp => {
-        return (emp.jobdesk || []).some(jd => jd && jd.category === 'gudang') &&
-            emp._id !== selectedSupervisorId &&
-            emp.name.toLowerCase().includes(searchGudang.toLowerCase());
-    });
+    // List unik nama jobdesk gudang: utamakan jobdesk dari event (edit mode), kalau kosong fallback ke semua karyawan
+    const jdList = (scheduledGudangData.length > 0)
+        ? Array.from(new Set(scheduledGudangData.flatMap(g => (g.jobdesk || []).filter(jd => jd && jd.category === 'gudang').map(jd => jd.name))))
+        : Array.from(new Set(
+            karyawanData.flatMap(emp =>
+                (emp.jobdesk || [])
+                    .filter(jd => jd && jd.category === 'gudang')
+                    .map(jd => jd.name)
+            )
+        )).filter(Boolean);
+
+    // Filter gudang untuk rendering: hanya scheduled gudang saat edit, filter by search text
+    const filteredGudangData = scheduledGudangData
+        .map(g => ({ ...g, user: g.user_id }))
+        .filter(g => g.user && g.user._id !== selectedSupervisorId && g.user.name.toLowerCase().includes(searchGudang.toLowerCase()));
 
     // Dapur: hanya tampilkan yang available (sudah difilter backend)
     const isDapurKaryawanDisabled = (karyawan, currentStanIndex) => {
@@ -706,15 +713,11 @@ export default function UpdateEvent() {
                                 <span className="block font-semibold mb-1">{jdName}</span>
                                 <div className="space-y-1 ml-2">
                                     {filteredGudangData
-                                        .filter(emp => (emp.jobdesk || []).some(jd => jd && jd.name === jdName && jd.category === 'gudang'))
-                                        .map(emp => {
-                                            // Cek apakah emp dijadwalkan pada event.gudang untuk jobdesk ini
-                                            const gudangEvent = event?.gudang.find(g =>
-                                                g.user_id._id === emp._id &&
-                                                (g.jobdesk || []).some(j => j && j.name === jdName)
-                                            );
-                                            const konfirmasi = gudangEvent?.confirmation;
-                                            if (konfirmasi === 'tidak bisa') return null;
+                                        .filter(g => (g.jobdesk || []).some(jd => jd && jd.name === jdName))
+                                        .map(g => {
+                                            const emp = g.user;
+                                            const konfirmasi = g.confirmation; // 'bisa' | 'menunggu' | undefined
+                                            if (konfirmasi === 'tidak bisa') return null; // skip
                                             const isChecked = selectedGudang.some(item => item.userId === emp._id && item.jobdesk === jdName);
                                             return (
                                                 <label key={emp._id + jdName} className="flex items-center gap-2">
