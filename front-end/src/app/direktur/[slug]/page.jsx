@@ -19,12 +19,6 @@ export default function Dashboard() {
             try {
                 const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/dashboard`);
                 setStats(response.data.data);
-                // membuat console.log untuk melihat data yang diterima pisahkan antara user, totalEvents, dan upcomingEvents
-                console.log("Dashboard Data:", response.data.data);
-                console.log("Total Users:", response.data.data.totalUsers);
-                console.log("Total Events:", response.data.data.totalEvents);
-                console.log("Upcoming Events:", response.data.data.upcomingEvents);
-
             } catch (error) {
                 console.log("Error fetching dashboard data:", error);
             };
